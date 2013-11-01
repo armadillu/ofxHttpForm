@@ -9,16 +9,15 @@ class testApp : public ofBaseApp{
 
 	public:
 		void setup();
-		void update();
+		void update(){};
 		void draw();
 
 		void keyPressed  (int key);
 
-		void newResponse(HttpFormResponse &response); //form was submitted callback
+		//"form was submitted" callback
+		void newResponse(HttpFormResponse &response);
 	
 		HttpFormManager fm;
-
-		void exit(){ printf("exit!!!!\n"); }
 };
 
 #endif
