@@ -11,6 +11,9 @@
 
 #include "ofEvents.h"
 #include "Poco/Net/HTTPClientSession.h"
+#include "Poco/Net/SSLManager.h"
+#include "Poco/Net/HTTPSClientSession.h"
+#include "Poco/Net/ConsoleCertificateHandler.h"
 #include "Poco/Net/HTTPRequest.h"
 #include "Poco/Net/HTTPResponse.h"
 #include "Poco/Net/HTMLForm.h"
@@ -36,8 +39,7 @@ HttpFormManager::HttpFormManager(){
 HttpFormManager::~HttpFormManager(){
 
 	timeToStop = true;	//lets flag the thread so that it doesnt try access stuff while we delete things around
-	cancelCurrentFormSubmission();
-	
+
 	//wait till thread is done with the current loop
 	waitForThread(false);
 	
@@ -102,10 +104,9 @@ HttpFormResponse* HttpFormManager::createFormRespPtrFromForm( HttpForm f ){
 void HttpFormManager::submitForm( HttpForm f, bool ignoreReply ){
 
  	HttpFormResponse *form = createFormRespPtrFromForm( f );
-	form->submissionCanceled = false;
+	//form->submissionCanceled = false;
 	form->ignoreReply = ignoreReply;
-	form->submissionCanceled = false;
-	form->session = NULL;
+	//form->session = NULL;
 			
 	lock();
 		q.push(form);
@@ -124,9 +125,9 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 	form.formIds = f.formIds;
 	form.formValues = f.formValues;
 	form.formFiles = f.formFiles;
-	form.submissionCanceled = false;
+	//form.submissionCanceled = false;
 	form.ignoreReply = false;
-	form.session = NULL;
+	//form.session = NULL;
 	
 	bool ok = executeForm( &form, false);
 	if (!ok) ofLog(OF_LOG_ERROR, "HttpFormManager::submitFormBlocking executeForm() failed!");
@@ -135,21 +136,21 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 
 void HttpFormManager::cancelCurrentFormSubmission(){
 
-	lock();
-		int n = q.size();
-		if ( isThreadRunning() && n > 0 ){			
-			HttpFormResponse * r = q.front();
-			if (debug) printf( "HttpFormManager::cancelCurrentForm() >> about to stop form submission of %s...\n", r->url.c_str() );
-			try{
-				r->submissionCanceled = true;
-				if ( r->session->connected() ) {
-					r->session->abort();
-				}
-			}catch(Exception& exc){
-				ofLog( OF_LOG_ERROR, "HttpFormManager::cancelCurrentForm(%s) >> Exception: %s\n", r->url.c_str(), exc.displayText().c_str() );
-			}
-		}
-	unlock();
+//	lock();
+//		int n = q.size();
+//		if ( isThreadRunning() && n > 0 ){			
+//			HttpFormResponse * r = q.front();
+//			if (debug) printf( "HttpFormManager::cancelCurrentForm() >> about to stop form submission of %s...\n", r->url.c_str() );
+//			try{
+//				r->submissionCanceled = true;
+//				if ( r->session->connected() ) {
+//					r->session->abort();
+//				}
+//			}catch(Exception& exc){
+//				ofLog( OF_LOG_ERROR, "HttpFormManager::cancelCurrentForm(%s) >> Exception: %s\n", r->url.c_str(), exc.displayText().c_str() );
+//			}
+//		}
+//	unlock();
 }
 
 int HttpFormManager::getQueueLength(){
@@ -179,19 +180,20 @@ HTMLForm* HttpFormManager::createPocoFormFrom( HttpFormResponse * resp ){
 
 	map<string,FormContent>::iterator it;
 	for( it = resp->formFiles.begin(); it != resp->formFiles.end(); it++ ){	
-		FilePartSource * file = NULL;
 		try{
 			string path = it->second.path;
-			file = new FilePartSource(  path, it->second.contentType );				
+			FilePartSource * file = new FilePartSource(  path, it->second.contentType );
+			form->addPart( it->first, file );
 		}catch(...){
 			ofLog( OF_LOG_FATAL_ERROR, "HttpFormManager::createPocoFormFrom() form file not found! %s\n", it->second.path.c_str());
+			delete form;
 			return NULL;
 		}
-		form->addPart( it->first, file );
-	}
 
+	}
 	return form;
 }
+
 
 bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroughEvents ){  
 
@@ -202,12 +204,9 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		if (path.empty()) path = "/";
 		resp->action = path;
 
-		HTTPClientSession session(uri.getHost(), uri.getPort());
-		HTTPRequest req(HTTPRequest::HTTP_POST, path, HTTPMessage::HTTP_1_1);		
-		resp->session = &session;
-		
-		session.setTimeout( Poco::Timespan(timeOut,0) );
-		
+		HTTPResponse res;
+		HTTPRequest req(HTTPRequest::HTTP_POST, path, HTTPMessage::HTTP_1_1);
+
 		req.set( "User-Agent", userAgent.c_str() );
 		if (acceptString.length() > 0){
 			req.set( "Accept", acceptString.c_str() );
@@ -222,11 +221,11 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		//so we create 2 indetical forms, one just to measure its size, other to use for sending thorugh the request
 		HTMLForm *form = createPocoFormFrom(resp);
 		if (form == NULL) return false;
-		HTMLForm *form2 = createPocoFormFrom(resp);
-					
+		HTMLForm *placeholderForm = createPocoFormFrom(resp);
+
 		form->prepareSubmit(req);
-		form2->prepareSubmit(req);
-		
+		placeholderForm->prepareSubmit(req);
+
 		req.setChunkedTransferEncoding(false);
 		//req.setKeepAlive(true);
 		//req.set("Accept" , "*/*" );
@@ -235,26 +234,24 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 
 		//lets find out the length of the total data we are sending and report it				
 		std::ostringstream formDumpContainer;
-		form2->write(formDumpContainer);
+		placeholderForm->write(formDumpContainer);
+		delete placeholderForm;
 		req.setContentLength( formDumpContainer.str().length() );	//finally we can specify exact content length in the request
 
-		try{
-			//send the form data through the http session
-			 std::ostream & ostr = session.sendRequest(req);
-			form->write( ostr );
-		}catch(Exception& exc){
-			ofLog( OF_LOG_ERROR, "HttpFormManager::executeForm(%s) >> Exception while sending form \n", resp->action.c_str() );
-			delete form2;
-			delete form;
-			//throw("Exception");
-			return false;
-		}
-
-		if (resp->submissionCanceled){	
-			if(debug) printf("HttpFormManager::executeForm() >> form submission (%s) canceled!\n", resp->action.c_str() );
-			delete form2;
-			delete form;
-			return false;
+		ofPtr<HTTPSession> session;
+		istream * rs;
+		if(uri.getScheme()=="https"){
+			HTTPSClientSession * httpsSession = new HTTPSClientSession(uri.getHost(), uri.getPort());//,context);
+			httpsSession->setTimeout( Poco::Timespan(timeOut,0) );
+			form->write(httpsSession->sendRequest(req));
+			rs = &httpsSession->receiveResponse(res);
+			session = ofPtr<HTTPSession>(httpsSession);
+		}else{
+			HTTPClientSession * httpSession = new HTTPClientSession(uri.getHost(), uri.getPort());
+			httpSession->setTimeout( Poco::Timespan(timeOut,0) );
+			form->write(httpSession->sendRequest(req));
+			rs = &httpSession->receiveResponse(res);
+			session = ofPtr<HTTPSession>(httpSession);
 		}
 
 		if (debug){	//print all what's being sent through network (http headers)
@@ -264,9 +261,13 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			std::cout << "HttpFormManager:: HTMLRequest follows >>" << endl;
 			std::cout << s << endl;
 		}
-				
-		HTTPResponse res;
-		istream& rs = session.receiveResponse(res);
+
+		//handle redirects?
+//		if(res.getStatus() >= 300 && res.getStatus() < 400){
+//			Poco::URI uri(req.getURI());
+//			uri.resolve(res.get("Location"));
+//			//uri.toString();
+//		}
 
 		//fill in the return object
 		resp->status = res.getStatus();
@@ -275,10 +276,8 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		resp->contentType = res.getContentType();
 		
 		if (debug) printf("HttpFormManager::executeForm() >> server reports request staus: (%d-%s)\n", resp->status, resp->reasonForStatus.c_str() );
-		
-		delete form2;	//we might be leaking here if an exception rises before we get to this point! TODO! uri
-		delete form;
 
+		delete form;
 		
 		if (timeToStop) {
 			printf("HttpFormManager::executeForm() >> time to stop! \n");
@@ -286,26 +285,26 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		};
 		
 		try{
-			StreamCopier::copyToString(rs, resp->responseBody);	//copy the data...		
+
+			StreamCopier::copyToString(*rs, resp->responseBody);	//copy the response data...
+
 		}catch(Exception& exc){
 			ofLog( OF_LOG_ERROR, "HttpFormManager::executeForm(%s) >> Exception while copyToString: %s\n", resp->action.c_str(), exc.displayText().c_str() );
-			delete form2;	//we might be leaking here if an exception rises before we get to this point! TODO! uri
-			delete form;
+			resp->ok = false;
 			return false;
 		}
 
-		if (debug) printf("HttpFormManager::executeForm() >> server response: \n\n######################## SERVER RESPONSE ########################\n\n%s\n#################################################################\n\n", resp->responseBody.c_str() );
-		printf("Successfully commited form %s!\n",  resp->action.c_str());
-		
-		if (resp->submissionCanceled){
-			if(debug) printf("HttpFormManager::executeForm() >> submit (%s) canceled!\n", resp->action.c_str());
-			return false;
+		if (debug){
+			printf("HttpFormManager::executeForm() >> server response: "
+				   "\n\n######################## SERVER RESPONSE ########################\n\n"
+				   "%s\n#################################################################\n\n",
+				   resp->responseBody.c_str() );
 		}
-		
+
 		if(debug) printf("HttpFormManager::executeForm() >> submitted form! (%s)\n", resp->action.c_str());
 		
 		resp->ok = true;
-		
+
 		if (sendResultThroughEvents ){	
 			if ( !resp->ignoreReply )
 				if (timeToStop == false)	//see if we have been destructed!

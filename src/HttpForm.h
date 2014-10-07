@@ -40,7 +40,7 @@ struct HttpForm{
 		
 		void addFile(string fieldName, string path, string mimeType = "text/plain"){
 			FormContent f;
-			f.path = ofToDataPath(path);
+			f.path = ofToDataPath(path, true);
 			f.contentType = mimeType;
 			formFiles[fieldName] = f;
 		}
