@@ -134,25 +134,6 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 	return form;	
 }
 
-void HttpFormManager::cancelCurrentFormSubmission(){
-
-//	lock();
-//		int n = q.size();
-//		if ( isThreadRunning() && n > 0 ){			
-//			HttpFormResponse * r = q.front();
-//			if (debug) printf( "HttpFormManager::cancelCurrentForm() >> about to stop form submission of %s...\n", r->url.c_str() );
-//			try{
-//				r->submissionCanceled = true;
-//				if ( r->session->connected() ) {
-//					r->session->abort();
-//				}
-//			}catch(Exception& exc){
-//				ofLog( OF_LOG_ERROR, "HttpFormManager::cancelCurrentForm(%s) >> Exception: %s\n", r->url.c_str(), exc.displayText().c_str() );
-//			}
-//		}
-//	unlock();
-}
-
 int HttpFormManager::getQueueLength(){
 	int queueLen = 0;
 	lock();
