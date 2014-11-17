@@ -101,13 +101,14 @@ HttpFormResponse* HttpFormManager::createFormRespPtrFromForm( HttpForm f ){
 }
 
 
-void HttpFormManager::submitForm( HttpForm f, bool ignoreReply ){
+void HttpFormManager::submitForm( HttpForm f, bool ignoreReply, string identifier ){
 
  	HttpFormResponse *form = createFormRespPtrFromForm( f );
 	//form->submissionCanceled = false;
 	form->ignoreReply = ignoreReply;
 	//form->session = NULL;
-			
+    form->identifier = identifier;
+
 	lock();
 		q.push(form);
 	unlock();
