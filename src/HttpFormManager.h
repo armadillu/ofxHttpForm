@@ -77,6 +77,8 @@ class HttpFormManager : public ofThread{
 		void setVerbose(bool verbose);
 		void setUserAgent( string newUserAgent );
 		void setAcceptString( string newAcceptString );
+
+		void setProxy(bool enableProxy, string host, int port, string username, string password);
 		
 		ofEvent<HttpFormResponse> formResponseEvent;
 	
@@ -97,5 +99,11 @@ class HttpFormManager : public ofThread{
 		queue<HttpFormResponse*>		q;		//the pending forms
 		bool							timeToStop;
 
+		//proxy config
+		bool 							enableProxy;
+		string							proxyHost;
+		int								proxyPort;
+		string							proxyUsername;
+		string							proxyPassword;
 	
 };

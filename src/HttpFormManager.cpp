@@ -34,6 +34,7 @@ HttpFormManager::HttpFormManager(){
 	timeToStop = false;
 	userAgent = "HttpFormManager (Poco Powered)";
 	acceptString = "";
+	enableProxy = false;
 }
 
 HttpFormManager::~HttpFormManager(){
@@ -71,6 +72,15 @@ void HttpFormManager::setUserAgent( string newUserAgent ){
 void HttpFormManager::setAcceptString( string newAcceptString ){
 	acceptString = newAcceptString;
 }
+
+void HttpFormManager::setProxy(bool enabled, string host, int port, string username, string password){
+	enableProxy = enabled;
+	proxyHost = host;
+	proxyPort = port;
+	proxyUsername = username;
+	proxyPassword = password;
+}
+
 
 
 void HttpFormManager::draw(int x, int y){
@@ -179,6 +189,10 @@ HTMLForm* HttpFormManager::createPocoFormFrom( HttpFormResponse * resp ){
 
 bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroughEvents ){  
 
+	HTMLForm *form = NULL;
+	HTMLForm *placeholderForm = NULL;
+	HTTPClientSession * httpSession = NULL;
+
 	try{
 
 		Poco::URI uri( resp->url );
@@ -201,9 +215,9 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		//long story short of why we fill in two forms:
 		//we need to specify exact lenght of the data in the form (file s headers), but we can't really measure it untill its been sent
 		//so we create 2 indetical forms, one just to measure its size, other to use for sending thorugh the request
-		HTMLForm *form = createPocoFormFrom(resp);
+		form = createPocoFormFrom(resp);
 		if (form == NULL) return false;
-		HTMLForm *placeholderForm = createPocoFormFrom(resp);
+		placeholderForm = createPocoFormFrom(resp);
 
 		form->prepareSubmit(req);
 		placeholderForm->prepareSubmit(req);
@@ -218,22 +232,27 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		std::ostringstream formDumpContainer;
 		placeholderForm->write(formDumpContainer);
 		delete placeholderForm;
+		placeholderForm = NULL;
 		req.setContentLength( formDumpContainer.str().length() );	//finally we can specify exact content length in the request
 
-		ofPtr<HTTPSession> session;
 		istream * rs;
 		if(uri.getScheme()=="https"){
-			HTTPSClientSession * httpsSession = new HTTPSClientSession(uri.getHost(), uri.getPort());//,context);
-			httpsSession->setTimeout( Poco::Timespan(timeOut,0) );
-			form->write(httpsSession->sendRequest(req));
-			rs = &httpsSession->receiveResponse(res);
-			session = ofPtr<HTTPSession>(httpsSession);
-		}else{
-			HTTPClientSession * httpSession = new HTTPClientSession(uri.getHost(), uri.getPort());
+			httpSession = new HTTPSClientSession(uri.getHost(), uri.getPort());//,context);
 			httpSession->setTimeout( Poco::Timespan(timeOut,0) );
 			form->write(httpSession->sendRequest(req));
 			rs = &httpSession->receiveResponse(res);
-			session = ofPtr<HTTPSession>(httpSession);
+		}else{
+			httpSession = new HTTPClientSession(uri.getHost(), uri.getPort());
+			httpSession->setTimeout( Poco::Timespan(timeOut,0) );
+			form->write(httpSession->sendRequest(req));
+			rs = &httpSession->receiveResponse(res);
+		}
+
+		if(enableProxy){
+			httpSession->setProxy(proxyHost, proxyPort);
+			httpSession->setProxyCredentials(proxyUsername, proxyPassword);
+		}else{
+			int a = 1+1;
 		}
 
 		if (debug){	//print all what's being sent through network (http headers)
@@ -260,6 +279,10 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		if (debug) printf("HttpFormManager::executeForm() >> server reports request staus: (%d-%s)\n", resp->status, resp->reasonForStatus.c_str() );
 
 		delete form;
+		form = NULL;
+
+		delete httpSession;
+		httpSession = NULL;
 		
 		if (timeToStop) {
 			printf("HttpFormManager::executeForm() >> time to stop! \n");
@@ -273,6 +296,10 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		}catch(Exception& exc){
 			ofLog( OF_LOG_ERROR, "HttpFormManager::executeForm(%s) >> Exception while copyToString: %s\n", resp->action.c_str(), exc.displayText().c_str() );
 			resp->ok = false;
+			//clean up
+			if(form) delete form;
+			if(httpSession) delete httpSession;
+			if(placeholderForm) delete placeholderForm;
 			return false;
 		}
 
@@ -296,6 +323,10 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 	}catch(Exception& exc){
 		ofLog( OF_LOG_ERROR, "HttpFormManager::executeForm(%s) >> Exception: %s\n", resp->action.c_str(), exc.displayText().c_str() );
 		resp->ok = FALSE;
+		//clean up
+		if(form) delete form;
+		if(httpSession) delete httpSession;
+		if(placeholderForm) delete placeholderForm;
 	}
 	return resp->ok;
 }
