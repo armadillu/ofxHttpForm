@@ -276,7 +276,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		resp->reasonForStatus = res.getReasonForStatus( res.getStatus() );
 		resp->contentType = res.getContentType();
 		
-		if (debug) printf("HttpFormManager::executeForm() >> server reports request staus: (%d-%s)\n", resp->status, resp->reasonForStatus.c_str() );
+		if (debug) ofLog(OF_LOG_NOTICE, "HttpFormManager::executeForm() >> server reports request status: (%d-%s)\n", resp->status, resp->reasonForStatus.c_str() );
 
 		delete form;
 		form = NULL;
@@ -285,7 +285,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		httpSession = NULL;
 		
 		if (timeToStop) {
-			printf("HttpFormManager::executeForm() >> time to stop! \n");
+			ofLog(OF_LOG_NOTICE, "HttpFormManager::executeForm() >> time to stop! \n");
 			return false;
 		};
 		
@@ -304,13 +304,13 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		}
 
 		if (debug){
-			printf("HttpFormManager::executeForm() >> server response: "
+			ofLog(OF_LOG_NOTICE, "HttpFormManager::executeForm() >> server response: "
 				   "\n\n######################## SERVER RESPONSE ########################\n\n"
 				   "%s\n#################################################################\n\n",
 				   resp->responseBody.c_str() );
 		}
 
-		if(debug) printf("HttpFormManager::executeForm() >> submitted form! (%s)\n", resp->action.c_str());
+		if(debug) ofLog(OF_LOG_NOTICE, "HttpFormManager::executeForm() >> submitted form! (%s)\n", resp->action.c_str());
 		
 		resp->ok = true;
 
@@ -333,7 +333,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 
 void HttpFormManager::threadedFunction(){
 
-	if (debug) printf("\nHttpFormManager >> start threadedFunction\n");
+	if (debug) ofLog(OF_LOG_NOTICE, "\nHttpFormManager >> start threadedFunction\n");
 	int pending = 0;
 	
 	lock();
@@ -354,18 +354,10 @@ void HttpFormManager::threadedFunction(){
 		unlock();
 	}
 	//if no more pending requests, let the thread die...
-	if (debug) printf("HttpFormManager >> exiting threadedFunction (queue %d)\n",  (int)q.size());
+	if (debug) ofLog(OF_LOG_NOTICE, "HttpFormManager >> exiting threadedFunction (queue %d)\n",  (int)q.size());
 	
 	if (!timeToStop){
-		if (debug) printf("detaching HttpFormManager thread!\n");
-#ifdef TARGET_OSX
-		pthread_detach(pthread_self());
-#endif
-/*
-		detach();		//why? cos this is a 1-off thread, once the task is finished, this thread is to be cleared.
-						//If not detached or joined with, it takes resources... neat, uh?
- */
+		if (debug) ofLog(OF_LOG_NOTICE, "detaching HttpFormManager thread!\n");
 	}
-
 	
 }
