@@ -239,21 +239,18 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		if(uri.getScheme()=="https"){
 			httpSession = new HTTPSClientSession(uri.getHost(), uri.getPort());//,context);
 			httpSession->setTimeout( Poco::Timespan(timeOut,0) );
-			form->write(httpSession->sendRequest(req));
-			rs = &httpSession->receiveResponse(res);
 		}else{
 			httpSession = new HTTPClientSession(uri.getHost(), uri.getPort());
 			httpSession->setTimeout( Poco::Timespan(timeOut,0) );
-			form->write(httpSession->sendRequest(req));
-			rs = &httpSession->receiveResponse(res);
 		}
 
 		if(enableProxy){
 			httpSession->setProxy(proxyHost, proxyPort);
 			httpSession->setProxyCredentials(proxyUsername, proxyPassword);
-		}else{
-			int a = 1+1;
 		}
+
+		form->write(httpSession->sendRequest(req));
+		rs = &httpSession->receiveResponse(res);
 
 		if (debug){	//print all what's being sent through network (http headers)
 			std::ostringstream ostr2;
