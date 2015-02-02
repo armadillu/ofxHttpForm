@@ -141,8 +141,12 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 	//form.session = NULL;
 	
 	bool ok = executeForm( &form, false);
-	if (!ok) ofLog(OF_LOG_ERROR, "HttpFormManager::submitFormBlocking executeForm() failed!");
-	return form;	
+	if (!ok){
+		ofLogError("HttpFormManager") << "executeForm() failed!";
+		ofLogError("HttpFormManager") << "HttpStatus: " << form.status << " Reason: " << form.reasonForStatus;
+		ofLogError("HttpFormManager") << "Server Reply: " << form.responseBody;
+	}
+	return form;
 }
 
 int HttpFormManager::getQueueLength(){
