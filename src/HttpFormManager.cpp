@@ -310,6 +310,9 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		if(debug) ofLog(OF_LOG_NOTICE, "HttpFormManager::executeForm() >> submitted form! (%s)\n", resp->action.c_str());
 		
 		resp->ok = true;
+		if(resp->status != 200){
+			resp->ok = false;
+		}
 
 		if (sendResultThroughEvents ){	
 			if ( !resp->ignoreReply )
