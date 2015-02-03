@@ -383,15 +383,15 @@ string HttpFormResponse::toString(){
 	ss << "HttpFormManager: " << identifier << " : " << url << endl;
 	ss << "    action: " << url << endl;
 	for(int i = 0; i < formIds.size(); i++){
-		ss << "    ID: " << formIds[i] << "  value: " << formValues[i] << endl;
+		ss << "    ID: '" << formIds[i] << "'  Value: '" << formValues[i] << "'" << endl;
 	}
 	std::map<string, FormContent>::iterator it = formFiles.begin();
 	while(it != formFiles.end()){
-		ss << "    FileID: " << it->first << "  path: " << it->second.path << "  CntType: " << it->second.contentType << endl;
+		ss << "    FileID: '" << it->first << "'  Path: '" << it->second.path << "'  CntType:  '" << it->second.contentType << "'" << endl;
 		++it;
 	}
 	ss << "    status: " << status << " (" << reasonForStatus << ")" << endl;
-	ss << "    response: " << responseBody << endl;
+	ss << "    response: '" << responseBody << "'" << endl;
 	return ss.str();
 }
 
