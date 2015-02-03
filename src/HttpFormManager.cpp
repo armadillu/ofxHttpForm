@@ -35,6 +35,7 @@ HttpFormManager::HttpFormManager(){
 	userAgent = "HttpFormManager (Poco Powered)";
 	acceptString = "";
 	enableProxy = false;
+	proxyPort = 80;
 }
 
 HttpFormManager::~HttpFormManager(){
@@ -142,9 +143,9 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 	
 	bool ok = executeForm( &form, false);
 	if (!ok){
-		ofLogError("HttpFormManager") << "executeForm() failed!";
+		ofLogError("HttpFormManager") << "executeForm() failed! " << form.url;
 		ofLogError("HttpFormManager") << "HttpStatus: " << form.status << " Reason: " << form.reasonForStatus;
-		ofLogError("HttpFormManager") << "Server Reply: " << form.responseBody;
+		ofLogError("HttpFormManager") << "Server Reply: '" << form.responseBody << "'";
 	}
 	return form;
 }
@@ -239,30 +240,41 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		placeholderForm = NULL;
 		req.setContentLength( formDumpContainer.str().length() );	//finally we can specify exact content length in the request
 
-		istream * rs;
+		;
 		if(uri.getScheme()=="https"){
 			httpSession = new HTTPSClientSession(uri.getHost(), uri.getPort());//,context);
-			httpSession->setTimeout( Poco::Timespan(timeOut,0) );
 		}else{
 			httpSession = new HTTPClientSession(uri.getHost(), uri.getPort());
-			httpSession->setTimeout( Poco::Timespan(timeOut,0) );
 		}
 
+		httpSession->setTimeout( Poco::Timespan(timeOut,0) );
 		if(enableProxy){
 			httpSession->setProxy(proxyHost, proxyPort);
 			httpSession->setProxyCredentials(proxyUsername, proxyPassword);
 		}
 
 		form->write(httpSession->sendRequest(req));
-		rs = &httpSession->receiveResponse(res);
+		istream & rs = httpSession->receiveResponse(res);
 
 		if (debug){	//print all what's being sent through network (http headers)
 			std::ostringstream ostr2;
 			req.write(ostr2);
 			std::string s = ostr2.str();
-			std::cout << "HttpFormManager:: HTMLRequest follows >>" << endl;
-			std::cout << s << endl;
+			ofLogNotice("HttpFormManager") << "HTMLRequest follows >> ";
+			ofLogNotice("HttpFormManager") << s;
 		}
+
+		try{
+			StreamCopier::copyToString(rs, resp->responseBody);	//copy the response data...
+		}catch(Exception& exc){
+			ofLogError("HttpFormManager") << "cant copy stream!";
+		}
+
+		delete form;
+		form = NULL;
+
+		delete httpSession;
+		httpSession = NULL;
 
 		//handle redirects?
 //		if(res.getStatus() >= 300 && res.getStatus() < 400){
@@ -279,12 +291,6 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		
 		if (debug) ofLog(OF_LOG_NOTICE, "HttpFormManager::executeForm() >> server reports request status: (%d-%s)\n", resp->status, resp->reasonForStatus.c_str() );
 
-		delete form;
-		form = NULL;
-
-		delete httpSession;
-		httpSession = NULL;
-		
 		if (timeToStop) {
 			ofLog(OF_LOG_NOTICE, "HttpFormManager::executeForm() >> time to stop! \n");
 			return false;
@@ -292,7 +298,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		
 		try{
 
-			StreamCopier::copyToString(*rs, resp->responseBody);	//copy the response data...
+			StreamCopier::copyToString(rs, resp->responseBody);	//copy the response data...
 
 		}catch(Exception& exc){
 			ofLog( OF_LOG_ERROR, "HttpFormManager::executeForm(%s) >> Exception while copyToString: %s\n", resp->action.c_str(), exc.displayText().c_str() );
@@ -363,5 +369,29 @@ void HttpFormManager::threadedFunction(){
 	if (!timeToStop){
 		if (debug) ofLog(OF_LOG_NOTICE, "detaching HttpFormManager thread!\n");
 	}
-	
 }
+
+
+void HttpFormResponse::print(){
+	ofLogNotice("HttpFormManager") << toString();
+}
+
+
+string HttpFormResponse::toString(){
+	stringstream ss;
+
+	ss << "HttpFormManager: " << identifier << " : " << url << endl;
+	ss << "    action: " << url << endl;
+	for(int i = 0; i < formIds.size(); i++){
+		ss << "    ID: " << formIds[i] << "  value: " << formValues[i] << endl;
+	}
+	std::map<string, FormContent>::iterator it = formFiles.begin();
+	while(it != formFiles.end()){
+		ss << "    FileID: " << it->first << "  path: " << it->second.path << "  CntType: " << it->second.contentType << endl;
+		++it;
+	}
+	ss << "    status: " << status << " (" << reasonForStatus << ")" << endl;
+	ss << "    response: " << responseBody << endl;
+	return ss.str();
+}
+
