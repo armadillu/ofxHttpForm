@@ -35,6 +35,7 @@ HttpFormManager::HttpFormManager(){
 	userAgent = "HttpFormManager (Poco Powered)";
 	acceptString = "";
 	enableProxy = false;
+	proxyPort = 80;
 }
 
 HttpFormManager::~HttpFormManager(){
@@ -140,8 +141,12 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 	//form.session = NULL;
 	
 	bool ok = executeForm( &form, false);
-	if (!ok) ofLog(OF_LOG_ERROR, "HttpFormManager::submitFormBlocking executeForm() failed!");
-	return form;	
+	if (!ok){
+		ofLogError("HttpFormManager") << "executeForm() failed! " << form.url;
+		ofLogError("HttpFormManager") << "HttpStatus: " << form.status << " Reason: " << form.reasonForStatus;
+		ofLogError("HttpFormManager") << "Server Reply: '" << form.responseBody << "'";
+	}
+	return form;
 }
 
 int HttpFormManager::getQueueLength(){
@@ -233,33 +238,43 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		placeholderForm = NULL;
 		req.setContentLength( formDumpContainer.str().length() );	//finally we can specify exact content length in the request
 
-		istream * rs;
+		;
 		if(uri.getScheme()=="https"){
 			httpSession = new HTTPSClientSession(uri.getHost(), uri.getPort());//,context);
-			httpSession->setTimeout( Poco::Timespan(timeOut,0) );
-			form->write(httpSession->sendRequest(req));
-			rs = &httpSession->receiveResponse(res);
 		}else{
 			httpSession = new HTTPClientSession(uri.getHost(), uri.getPort());
-			httpSession->setTimeout( Poco::Timespan(timeOut,0) );
-			form->write(httpSession->sendRequest(req));
-			rs = &httpSession->receiveResponse(res);
 		}
 
+		httpSession->setTimeout( Poco::Timespan(timeOut,0) );
 		if(enableProxy){
 			httpSession->setProxy(proxyHost, proxyPort);
 			httpSession->setProxyCredentials(proxyUsername, proxyPassword);
-		}else{
-			ofLogNotice("HttpFormManager") << "NO PROXY USED! " << resp->action;
-		}
+		}//else{
+		//	ofLogNotice("HttpFormManager") << "NO PROXY USED! " << resp->action;
+		//}
+
+		form->write(httpSession->sendRequest(req));
+		istream & rs = httpSession->receiveResponse(res);
 
 		if (debug){	//print all what's being sent through network (http headers)
 			std::ostringstream ostr2;
 			req.write(ostr2);
 			std::string s = ostr2.str();
-			std::cout << "HttpFormManager:: HTMLRequest follows >>" << endl;
-			std::cout << s << endl;
+			ofLogNotice("HttpFormManager") << "HTMLRequest follows >> ";
+			ofLogNotice("HttpFormManager") << s;
 		}
+
+		try{
+			StreamCopier::copyToString(rs, resp->responseBody);	//copy the response data...
+		}catch(Exception& exc){
+			ofLogError("HttpFormManager") << "cant copy stream!";
+		}
+
+		delete form;
+		form = NULL;
+
+		delete httpSession;
+		httpSession = NULL;
 
 		//handle redirects?
 //		if(res.getStatus() >= 300 && res.getStatus() < 400){
@@ -278,12 +293,6 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			ofLogError("HttpFormManager") << "executeForm() >> server reports request status: (" << resp->status << " - " << resp->reasonForStatus << ")";
 		}
 
-		delete form;
-		form = NULL;
-
-		delete httpSession;
-		httpSession = NULL;
-		
 		if (timeToStop) {
 			ofLogError("HttpFormManager") << "executeForm() >> time to stop!";
 			return false;
@@ -291,7 +300,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		
 		try{
 
-			StreamCopier::copyToString(*rs, resp->responseBody);	//copy the response data...
+			StreamCopier::copyToString(rs, resp->responseBody);	//copy the response data...
 
 		}catch(Exception& exc){
 			ofLogError("HttpFormManager") << "executeForm(" << resp->action <<  ") >> Exception while copyToString: " << exc.displayText();
@@ -313,6 +322,9 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		if(debug) ofLogNotice("HttpFormManager") << "executeForm() >> submitted form! ("<< resp->action << ")";
 		
 		resp->ok = true;
+		if(resp->status != 200){
+			resp->ok = false;
+		}
 
 		if (sendResultThroughEvents ){	
 			if ( !resp->ignoreReply )
@@ -359,5 +371,29 @@ void HttpFormManager::threadedFunction(){
 	if (!timeToStop){
 		if (debug) ofLogNotice("HttpFormManager") << "detaching HttpFormManager thread!";
 	}
-	
 }
+
+
+void HttpFormResponse::print(){
+	ofLogNotice("HttpFormManager") << toString();
+}
+
+
+string HttpFormResponse::toString(){
+	stringstream ss;
+
+	ss << "HttpFormManager: " << identifier << " : " << url << endl;
+	ss << "    action: " << url << endl;
+	for(int i = 0; i < formIds.size(); i++){
+		ss << "    ID: '" << formIds[i] << "'  Value: '" << formValues[i] << "'" << endl;
+	}
+	std::map<string, FormContent>::iterator it = formFiles.begin();
+	while(it != formFiles.end()){
+		ss << "    FileID: '" << it->first << "'  Path: '" << it->second.path << "'  CntType:  '" << it->second.contentType << "'" << endl;
+		++it;
+	}
+	ss << "    status: " << status << " (" << reasonForStatus << ")" << endl;
+	ss << "    response: '" << responseBody << "'" << endl;
+	return ss.str();
+}
+

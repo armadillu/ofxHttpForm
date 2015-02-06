@@ -52,6 +52,9 @@ struct HttpFormResponse{
 	//HTTPClientSession *			session;
 
     string                      identifier;
+	string						toString();
+	void						print();
+
 };
 
 
@@ -81,7 +84,7 @@ class HttpFormManager : public ofThread{
 		void setProxy(bool enableProxy, string host, int port, string username, string password);
 		
 		ofEvent<HttpFormResponse> formResponseEvent;
-	
+
 	private:
 		
 		void threadedFunction();	//the queue runs here
