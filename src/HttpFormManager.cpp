@@ -86,7 +86,7 @@ void HttpFormManager::setProxy(bool enabled, string host, int port, string usern
 void HttpFormManager::draw(int x, int y){
 	
 	char aux[2048];
-	lock();
+	ofMutex::ScopedLock Lock( mutex );
 		int n = q.size();
 		if ( isThreadRunning() && n > 0 ){
 			HttpFormResponse * r = q.front();
@@ -96,7 +96,6 @@ void HttpFormManager::draw(int x, int y){
 		}
 		glColor3ub(255,0,0);
 		ofDrawBitmapString(aux, x, y);
-	unlock();	
 }
 
 
@@ -146,10 +145,9 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 }
 
 int HttpFormManager::getQueueLength(){
+	ofMutex::ScopedLock Lock( mutex );
 	int queueLen = 0;
-	lock();
-		queueLen = q.size();
-	unlock();	
+	queueLen = q.size();
 	return queueLen;
 }
 
@@ -177,7 +175,7 @@ HTMLForm* HttpFormManager::createPocoFormFrom( HttpFormResponse * resp ){
 			FilePartSource * file = new FilePartSource(  path, it->second.contentType );
 			form->addPart( it->first, file );
 		}catch(...){
-			ofLog( OF_LOG_FATAL_ERROR, "HttpFormManager::createPocoFormFrom() form file not found! %s\n", it->second.path.c_str());
+			ofLogError("HttpFormManager") << "createPocoFormFrom() form file not found! " << it->second.path;
 			delete form;
 			return NULL;
 		}
@@ -252,7 +250,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			httpSession->setProxy(proxyHost, proxyPort);
 			httpSession->setProxyCredentials(proxyUsername, proxyPassword);
 		}else{
-			int a = 1+1;
+			ofLogNotice("HttpFormManager") << "NO PROXY USED! " << resp->action;
 		}
 
 		if (debug){	//print all what's being sent through network (http headers)
@@ -276,7 +274,9 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		resp->reasonForStatus = res.getReasonForStatus( res.getStatus() );
 		resp->contentType = res.getContentType();
 		
-		if (debug) ofLog(OF_LOG_NOTICE, "HttpFormManager::executeForm() >> server reports request status: (%d-%s)\n", resp->status, resp->reasonForStatus.c_str() );
+		if (debug) {
+			ofLogError("HttpFormManager") << "executeForm() >> server reports request status: (" << resp->status << " - " << resp->reasonForStatus << ")";
+		}
 
 		delete form;
 		form = NULL;
@@ -285,7 +285,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		httpSession = NULL;
 		
 		if (timeToStop) {
-			ofLog(OF_LOG_NOTICE, "HttpFormManager::executeForm() >> time to stop! \n");
+			ofLogError("HttpFormManager") << "executeForm() >> time to stop!";
 			return false;
 		};
 		
@@ -294,7 +294,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			StreamCopier::copyToString(*rs, resp->responseBody);	//copy the response data...
 
 		}catch(Exception& exc){
-			ofLog( OF_LOG_ERROR, "HttpFormManager::executeForm(%s) >> Exception while copyToString: %s\n", resp->action.c_str(), exc.displayText().c_str() );
+			ofLogError("HttpFormManager") << "executeForm(" << resp->action <<  ") >> Exception while copyToString: " << exc.displayText();
 			resp->ok = false;
 			//clean up
 			if(form) delete form;
@@ -304,13 +304,13 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		}
 
 		if (debug){
-			ofLog(OF_LOG_NOTICE, "HttpFormManager::executeForm() >> server response: "
-				   "\n\n######################## SERVER RESPONSE ########################\n\n"
-				   "%s\n#################################################################\n\n",
-				   resp->responseBody.c_str() );
+			ofLogNotice("HttpFormManager") << endl <<
+			"\n\n######################## SERVER RESPONSE ########################\n\n" <<
+			  resp->responseBody <<
+			"\n#################################################################\n\n";
 		}
 
-		if(debug) ofLog(OF_LOG_NOTICE, "HttpFormManager::executeForm() >> submitted form! (%s)\n", resp->action.c_str());
+		if(debug) ofLogNotice("HttpFormManager") << "executeForm() >> submitted form! ("<< resp->action << ")";
 		
 		resp->ok = true;
 
@@ -321,7 +321,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		}
 
 	}catch(Exception& exc){
-		ofLog( OF_LOG_ERROR, "HttpFormManager::executeForm(%s) >> Exception: %s\n", resp->action.c_str(), exc.displayText().c_str() );
+		ofLogError("HttpFormManager") << "executeForm(" << resp->action << ") >> Exception: " << exc.displayText();
 		resp->ok = FALSE;
 		//clean up
 		if(form) delete form;
@@ -333,7 +333,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 
 void HttpFormManager::threadedFunction(){
 
-	if (debug) ofLog(OF_LOG_NOTICE, "\nHttpFormManager >> start threadedFunction\n");
+	if (debug) ofLogNotice("HttpFormManager") << "start threadedFunction";
 	int pending = 0;
 	
 	lock();
@@ -354,10 +354,10 @@ void HttpFormManager::threadedFunction(){
 		unlock();
 	}
 	//if no more pending requests, let the thread die...
-	if (debug) ofLog(OF_LOG_NOTICE, "HttpFormManager >> exiting threadedFunction (queue %d)\n",  (int)q.size());
+	if (debug) ofLogNotice("HttpFormManager") << "HttpFormManager >> exiting threadedFunction (queue " << (int)q.size() <<")";
 	
 	if (!timeToStop){
-		if (debug) ofLog(OF_LOG_NOTICE, "detaching HttpFormManager thread!\n");
+		if (debug) ofLogNotice("HttpFormManager") << "detaching HttpFormManager thread!";
 	}
 	
 }
