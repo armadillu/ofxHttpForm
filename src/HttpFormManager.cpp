@@ -296,11 +296,11 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		resp->contentType = res.getContentType();
 		
 		if (debug) {
-			ofLogError("HttpFormManager") << "executeForm() >> server reports request status: (" << resp->status << " - " << resp->reasonForStatus << ")";
+			ofLogNotice("HttpFormManager") << "executeForm() >> server reports request status: (" << resp->status << " - " << resp->reasonForStatus << ")";
 		}
 
 		if (timeToStop) {
-			ofLogError("HttpFormManager") << "executeForm() >> time to stop!";
+			ofLogNotice("HttpFormManager") << "executeForm() >> time to stop!";
 			return false;
 		};
 		
