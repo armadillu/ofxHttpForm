@@ -37,7 +37,7 @@ HttpFormManager::HttpFormManager(){
 	acceptString = "";
 	enableProxy = false;
 	proxyPort = 80;
-    usingCredentials = false;
+	usingCredentials = false;
 }
 
 HttpFormManager::~HttpFormManager(){
@@ -85,9 +85,9 @@ void HttpFormManager::setProxy(bool enabled, string host, int port, string usern
 }
 
 void HttpFormManager::setCredentials(string newUsername, string newPassword){
-    username = newUsername;
-    password = newPassword;
-    usingCredentials = true;
+	username = newUsername;
+	password = newPassword;
+	usingCredentials = true;
 }
 
 void HttpFormManager::draw(int x, int y){
@@ -217,10 +217,10 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			req.set( "Accept", acceptString.c_str() );
 		}
 
-        if(usingCredentials){
-            Poco::Net::HTTPBasicCredentials cred(username, password);
-            cred.authenticate(req);
-        }
+		if(usingCredentials){
+			Poco::Net::HTTPBasicCredentials cred(username, password);
+			cred.authenticate(req);
+		}
 
 		//long story short of why we fill in two forms:
 		//we need to specify exact lenght of the data in the form (file s headers), but we can't really measure it untill its been sent
@@ -330,14 +330,14 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
         // HTTP Status Codes
         // http://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
         
-        switch(resp->status){
-            case 200: // OK
-            case 201: // Created
-                resp->ok = true;
-                break;
-            default:
-                resp->ok = false;
-        }
+		switch(resp->status){
+			case 200: // OK
+			case 201: // Created
+				resp->ok = true;
+				break;
+			default:
+				resp->ok = false;
+		}
 
 		if (sendResultThroughEvents ){	
 			if ( !resp->ignoreReply )
