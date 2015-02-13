@@ -13,10 +13,12 @@ struct HttpForm{
 
 		HttpForm(){
 			url = "";
+			port = -1;
 		}
 
-		HttpForm( string url_ ){
+		HttpForm( string url_, int port_ = -1 ){
 			url = url_;
+			port = port_;
 		}
 		
 		~HttpForm(){

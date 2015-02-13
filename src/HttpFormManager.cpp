@@ -205,9 +205,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 
 	try{
 		Poco::URI uri( resp->url );
-		if(resp->port){
-			uri.setPort(resp->port);
-		}
+		if(resp->port != -1) uri.setPort(resp->port);
 		std::string path(uri.getPathAndQuery());
 		if (path.empty()) path = "/";
 		resp->action = path;
