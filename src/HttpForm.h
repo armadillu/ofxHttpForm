@@ -26,6 +26,10 @@ struct HttpForm{
 		void setURL(string url_){
 			url = url_;			
 		}
+
+		void setPort(int port_){
+			port = port_;			
+		}
 	
 		void addFormField(string ID, string value){
 			formIds.push_back( ID );
@@ -53,6 +57,7 @@ struct HttpForm{
 		}
 
 		string url;
+		int port;
 		vector <string> formIds;
 		vector <string> formValues;
 		std::map< string, FormContent >formFiles;
