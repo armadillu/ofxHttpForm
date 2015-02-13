@@ -36,6 +36,7 @@ struct HttpFormResponse{
 	
 	//submitted form contents
 	string						url;
+	int							port;
 	string						action;	
 	vector <string>				formIds;
 	vector <string>				formValues;
