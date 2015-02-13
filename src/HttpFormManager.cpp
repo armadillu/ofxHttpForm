@@ -110,6 +110,7 @@ HttpFormResponse* HttpFormManager::createFormRespPtrFromForm( HttpForm f ){
 
  	HttpFormResponse *form = new HttpFormResponse();
 	form->url = f.url;
+	form->port = f.port;
 	form->formIds = f.formIds;
 	form->formValues = f.formValues;
 	form->formFiles = f.formFiles;
@@ -203,8 +204,8 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 	HTTPClientSession * httpSession = NULL;
 
 	try{
-
 		Poco::URI uri( resp->url );
+		if(resp->port != -1) uri.setPort(resp->port);
 		std::string path(uri.getPathAndQuery());
 		if (path.empty()) path = "/";
 		resp->action = path;
