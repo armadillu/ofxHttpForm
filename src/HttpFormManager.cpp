@@ -13,6 +13,7 @@
 #include "Poco/Net/HTTPClientSession.h"
 #include "Poco/Net/SSLManager.h"
 #include "Poco/Net/HTTPSClientSession.h"
+#include "Poco/Net/HTTPBasicCredentials.h"
 #include "Poco/Net/ConsoleCertificateHandler.h"
 #include "Poco/Net/HTTPRequest.h"
 #include "Poco/Net/HTTPResponse.h"
@@ -36,6 +37,7 @@ HttpFormManager::HttpFormManager(){
 	acceptString = "";
 	enableProxy = false;
 	proxyPort = 80;
+	usingCredentials = false;
 }
 
 HttpFormManager::~HttpFormManager(){
@@ -82,7 +84,11 @@ void HttpFormManager::setProxy(bool enabled, string host, int port, string usern
 	proxyPassword = password;
 }
 
-
+void HttpFormManager::setCredentials(string newUsername, string newPassword){
+	username = newUsername;
+	password = newPassword;
+	usingCredentials = true;
+}
 
 void HttpFormManager::draw(int x, int y){
 	
@@ -211,9 +217,10 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			req.set( "Accept", acceptString.c_str() );
 		}
 
-		//auth, todo later?
-		//	Poco::Net::HTTPBasicCredentials cred(_username, _password);
-		//	cred.authenticate(req);
+		if(usingCredentials){
+			Poco::Net::HTTPBasicCredentials cred(username, password);
+			cred.authenticate(req);
+		}
 
 		//long story short of why we fill in two forms:
 		//we need to specify exact lenght of the data in the form (file s headers), but we can't really measure it untill its been sent
@@ -238,7 +245,6 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		placeholderForm = NULL;
 		req.setContentLength( formDumpContainer.str().length() );	//finally we can specify exact content length in the request
 
-		;
 		if(uri.getScheme()=="https"){
 			httpSession = new HTTPSClientSession(uri.getHost(), uri.getPort());//,context);
 		}else{
@@ -290,11 +296,11 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		resp->contentType = res.getContentType();
 		
 		if (debug) {
-			ofLogError("HttpFormManager") << "executeForm() >> server reports request status: (" << resp->status << " - " << resp->reasonForStatus << ")";
+			ofLogNotice("HttpFormManager") << "executeForm() >> server reports request status: (" << resp->status << " - " << resp->reasonForStatus << ")";
 		}
 
 		if (timeToStop) {
-			ofLogError("HttpFormManager") << "executeForm() >> time to stop!";
+			ofLogNotice("HttpFormManager") << "executeForm() >> time to stop!";
 			return false;
 		};
 		
@@ -321,9 +327,16 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 
 		if(debug) ofLogNotice("HttpFormManager") << "executeForm() >> submitted form! ("<< resp->action << ")";
 		
-		resp->ok = true;
-		if(resp->status != 200){
-			resp->ok = false;
+        // HTTP Status Codes
+        // http://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
+        
+		switch(resp->status){
+			case 200: // OK
+			case 201: // Created
+				resp->ok = true;
+				break;
+			default:
+				resp->ok = false;
 		}
 
 		if (sendResultThroughEvents ){	

@@ -82,6 +82,8 @@ class HttpFormManager : public ofThread{
 		void setAcceptString( string newAcceptString );
 
 		void setProxy(bool enableProxy, string host, int port, string username, string password);
+    
+		void setCredentials(string username, string password);
 		
 		ofEvent<HttpFormResponse> formResponseEvent;
 
@@ -108,5 +110,10 @@ class HttpFormManager : public ofThread{
 		int								proxyPort;
 		string							proxyUsername;
 		string							proxyPassword;
+    
+		//credentials
+		string							username;
+		string							password;
+		bool							usingCredentials;
 	
 };
