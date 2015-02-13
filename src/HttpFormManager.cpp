@@ -327,10 +327,17 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 
 		if(debug) ofLogNotice("HttpFormManager") << "executeForm() >> submitted form! ("<< resp->action << ")";
 		
-		resp->ok = true;
-		if(resp->status != 200){
-			resp->ok = false;
-		}
+        // HTTP Status Codes
+        // http://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
+        
+        switch(resp->status){
+            case 200: // OK
+            case 201: // Created
+                resp->ok = true;
+                break;
+            default:
+                resp->ok = false;
+        }
 
 		if (sendResultThroughEvents ){	
 			if ( !resp->ignoreReply )
