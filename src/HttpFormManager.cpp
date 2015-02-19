@@ -111,8 +111,7 @@ HttpFormResponse* HttpFormManager::createFormRespPtrFromForm( HttpForm f ){
  	HttpFormResponse *form = new HttpFormResponse();
 	form->url = f.url;
 	form->port = f.port;
-	form->formIds = f.formIds;
-	form->formValues = f.formValues;
+	form->formIdValues = f.formIdValues;
 	form->formFiles = f.formFiles;
 	return form;
 }
@@ -123,7 +122,6 @@ void HttpFormManager::submitForm( HttpForm f, bool ignoreReply, string identifie
  	HttpFormResponse *form = createFormRespPtrFromForm( f );
 	//form->submissionCanceled = false;
 	form->ignoreReply = ignoreReply;
-	//form->session = NULL;
     form->identifier = identifier;
 
 	lock();
@@ -140,18 +138,19 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 	
 	HttpFormResponse form;
 	form.url = f.url;
-	form.formIds = f.formIds;
-	form.formValues = f.formValues;
-	form.formFiles = f.formFiles;
+	form.formIdValues = f.formIdValues;
 	//form.submissionCanceled = false;
 	form.ignoreReply = false;
-	//form.session = NULL;
+
 	
 	bool ok = executeForm( &form, false);
 	if (!ok){
-		ofLogError("HttpFormManager") << "executeForm() failed! " << form.url;
-		ofLogError("HttpFormManager") << "HttpStatus: " << form.status << " Reason: " << form.reasonForStatus;
+		ofLogError("HttpFormManager") << "ExecuteForm() failed! ";
+		ofLogError("HttpFormManager") << f.toString(100);
+		ofLogError("HttpFormManager") << "HttpStatus: " << form.status;
+		ofLogError("HttpFormManager") << "Reason: " << form.reasonForStatus;
 		ofLogError("HttpFormManager") << "Server Reply: '" << form.responseBody << "'";
+		ofLogError("HttpFormManager") << "Time Elapsed: " << form.totalTime << " sec";
 	}
 	return form;
 }
@@ -174,10 +173,14 @@ HTMLForm* HttpFormManager::createPocoFormFrom( HttpFormResponse * resp ){
 		form->setEncoding(HTMLForm::ENCODING_URL);
 					
 	// form values
-	for( unsigned i = 0; i < resp->formIds.size(); i++ ){
-		const std::string name = resp->formIds[i].c_str();
-		const std::string val = resp->formValues[i].c_str();
-		form->set(name, val);
+	{
+		map<string,string>::iterator it = resp->formIdValues.begin();
+		while(it != resp->formIdValues.end()){
+			const std::string name = it->first.c_str();
+			const std::string val = it->second.c_str();
+			form->set(name, val);
+			++it;
+		}
 	}
 
 	map<string,FormContent>::iterator it;
@@ -210,6 +213,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		if (path.empty()) path = "/";
 		resp->action = path;
 
+		float t = ofGetElapsedTimef();
 		HTTPResponse res;
 		HTTPRequest req(HTTPRequest::HTTP_POST, path, HTTPMessage::HTTP_1_1);
 
@@ -261,7 +265,36 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		//}
 
 		form->write(httpSession->sendRequest(req));
-		istream & rs = httpSession->receiveResponse(res);
+		istream * rsP = NULL;
+		try{
+			istream & rs = httpSession->receiveResponse(res);
+			resp->totalTime = ofGetElapsedTimef() - t;
+			//ofLogNotice("HttpFormManager") << "Response Took: " << resp->totalTime << " seconds";
+			rsP = &rs;
+		}catch(Exception& exc){
+			resp->status = res.getStatus();
+			resp->reasonForStatus = res.getReasonForStatus( res.getStatus() );
+			ofLogError("HttpFormManager") << exc.displayText() ;
+			float responseTime = ofGetElapsedTimef() - t;
+			if(responseTime > timeOut){
+				ofLogError("HttpFormManager") << "most likely a timeOut! took " << responseTime << " seconds";
+			}
+			if(rsP == NULL){
+				//httpSession->abort();
+				//cleanup and return early
+				if(form) delete form;
+				if(httpSession) delete httpSession;
+				if(placeholderForm) delete placeholderForm;
+				resp->ok = false;
+				return;
+			}
+		}
+
+		try{
+			StreamCopier::copyToString(*rsP, resp->responseBody);	//copy the response data...
+		}catch(Exception& exc){
+			ofLogError("HttpFormManager") << "cant copy stream!";
+		}
 
 		if (debug){	//print all what's being sent through network (http headers)
 			std::ostringstream ostr2;
@@ -271,16 +304,18 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			ofLogNotice("HttpFormManager") << s;
 		}
 
-		try{
-			StreamCopier::copyToString(rs, resp->responseBody);	//copy the response data...
-		}catch(Exception& exc){
-			ofLogError("HttpFormManager") << "cant copy stream!";
-		}
+		//fill in the return object
+		resp->status = res.getStatus();
+		resp->reasonForStatus = res.getReasonForStatus( res.getStatus() );
+		resp->timestamp = res.getDate();
+		resp->contentType = res.getContentType();
 
-		delete form;
+		//delete createdobjects
+		if (form) delete form;
 		form = NULL;
-
-		delete httpSession;
+		if (placeholderForm) delete placeholderForm;
+		placeholderForm = NULL;
+		if(httpSession)delete httpSession;
 		httpSession = NULL;
 
 		//handle redirects?
@@ -290,12 +325,6 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 //			//uri.toString();
 //		}
 
-		//fill in the return object
-		resp->status = res.getStatus();
-		resp->timestamp = res.getDate();
-		resp->reasonForStatus = res.getReasonForStatus( res.getStatus() );
-		resp->contentType = res.getContentType();
-		
 		if (debug) {
 			ofLogNotice("HttpFormManager") << "executeForm() >> server reports request status: (" << resp->status << " - " << resp->reasonForStatus << ")";
 		}
@@ -307,37 +336,28 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		
 		try{
 
-			StreamCopier::copyToString(rs, resp->responseBody);	//copy the response data...
+			StreamCopier::copyToString(*rsP, resp->responseBody);	//copy the response data...
 
 		}catch(Exception& exc){
 			ofLogError("HttpFormManager") << "executeForm(" << resp->action <<  ") >> Exception while copyToString: " << exc.displayText();
 			resp->ok = false;
-			//clean up
-			if(form) delete form;
-			if(httpSession) delete httpSession;
-			if(placeholderForm) delete placeholderForm;
 			return false;
 		}
 
 		if (debug){
+			ofLogNotice("HttpFormManager") << "executeForm() >> submitted form! ("<< resp->action << ")";
 			ofLogNotice("HttpFormManager") << endl <<
 			"\n\n######################## SERVER RESPONSE ########################\n\n" <<
 			  resp->responseBody <<
 			"\n#################################################################\n\n";
 		}
 
-		if(debug) ofLogNotice("HttpFormManager") << "executeForm() >> submitted form! ("<< resp->action << ")";
-		
-        // HTTP Status Codes
-        // http://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
-        
 		switch(resp->status){
-			case 200: // OK
-			case 201: // Created
-				resp->ok = true;
-				break;
+			case HTTPResponse::HTTP_OK:
+			case HTTPResponse::HTTP_CREATED:
+				resp->ok = true; break;
 			default:
-				resp->ok = false;
+				resp->ok = false; break;
 		}
 
 		if (sendResultThroughEvents ){	
@@ -398,8 +418,12 @@ string HttpFormResponse::toString(){
 
 	ss << "HttpFormManager: " << identifier << " : " << url << endl;
 	ss << "    action: " << url << endl;
-	for(int i = 0; i < formIds.size(); i++){
-		ss << "    ID: '" << formIds[i] << "'  Value: '" << formValues[i] << "'" << endl;
+	{
+		map<string,string>::iterator it = formIdValues.begin();
+		while( it != formIdValues.end()){
+			ss << "    ID: '" << it->first << "'  Value: '" << it->second << "'" << endl;
+			++it;
+		}
 	}
 	std::map<string, FormContent>::iterator it = formFiles.begin();
 	while(it != formFiles.end()){

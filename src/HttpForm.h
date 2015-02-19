@@ -34,13 +34,11 @@ struct HttpForm{
 		}
 	
 		void addFormField(string ID, string value){
-			formIds.push_back( ID );
-			formValues.push_back( value );
+			formIdValues[ID] = value;
 		}
 		
 		void clearFormFields(){
-			formIds.clear();
-			formValues.clear();
+			formIdValues.clear();
 			formFiles.clear();
 		}
 		
@@ -51,17 +49,42 @@ struct HttpForm{
 			formFiles[fieldName] = f;
 		}
 
-		string getFieldValue(string id){
-			for(unsigned int i=0;i<formIds.size();i++){
-				if(formIds[i]==id) return formValues[i];
+		string getFieldValue(string ID){
+			std::map<string, string>::iterator it = formIdValues.find(ID);
+			if(it != formIdValues.end()){
+				return it->second;
 			}
 			return "";
 		}
 
+		string toString(int cropValueLenTo = -1){
+			string r = "HttpForm endpoint: " + url;
+			if(port != -1) r += "  port: " + ofToString(port) + "\n";
+			else r += "\n";
+
+			std::map<string, string>::iterator it2 = formIdValues.begin();
+			while( it2 != formIdValues.end() ){
+				if(cropValueLenTo > 0){
+					string val = it2->second;
+					if(val.size() > cropValueLenTo) val = val.substr(0, cropValueLenTo) + "...";
+					r+= it2->first + " : " + val + "\n";
+				}else{
+					r+= it2->first + " : " + it2->second + "\n";
+				}
+				++it2;
+			}
+
+			std::map<string, FormContent >::iterator it = formFiles.begin();
+			while( it != formFiles.end()){
+				r+= it->first + " : " + it->second.path + "(" + it->second.contentType + ")\n";
+				++it;
+			}
+			return r;
+		}
+
 		string url;
 		int port;
-		vector <string> formIds;
-		vector <string> formValues;
-		std::map< string, FormContent >formFiles;
+		std::map<string, string> formIdValues;
+		std::map<string, FormContent > formFiles;
 };
 

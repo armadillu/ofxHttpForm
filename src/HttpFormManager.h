@@ -38,8 +38,7 @@ struct HttpFormResponse{
 	string						url;
 	int							port;
 	string						action;	
-	vector <string>				formIds;
-	vector <string>				formValues;
+	std::map<string,string>		formIdValues;
 	std::map<string, FormContent> formFiles;
 
 	//more detailed response info & session
@@ -50,11 +49,16 @@ struct HttpFormResponse{
 	string						responseBody;		// the actual response
 	string						contentType;		// the mime type of the response
 	Poco::Timestamp				timestamp;			// time of the response
-	//HTTPClientSession *			session;
+	float						totalTime;			//time it took to get a response
 
     string                      identifier;
 	string						toString();
 	void						print();
+
+	HttpFormResponse(){
+		status = port = -1;
+		totalTime = 0.0f;
+	}
 
 };
 
