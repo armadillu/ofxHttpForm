@@ -146,7 +146,7 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 	bool ok = executeForm( &form, false);
 	if (!ok){
 		ofLogError("HttpFormManager") << "ExecuteForm() failed! ";
-		ofLogError("HttpFormManager") << f.toString(100);
+		ofLogError("HttpFormManager") << "\n" << f.toString(100);
 		ofLogError("HttpFormManager") << "HttpStatus: " << form.status;
 		ofLogError("HttpFormManager") << "Reason: " << form.reasonForStatus;
 		ofLogError("HttpFormManager") << "Server Reply: '" << form.responseBody << "'";
