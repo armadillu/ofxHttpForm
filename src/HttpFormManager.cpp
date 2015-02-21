@@ -139,6 +139,7 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 	HttpFormResponse form;
 	form.url = f.url;
 	form.formIdValues = f.formIdValues;
+	form.formFiles = f.formFiles;
 	//form.submissionCanceled = false;
 	form.ignoreReply = false;
 

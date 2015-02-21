@@ -76,7 +76,7 @@ struct HttpForm{
 
 			std::map<string, FormContent >::iterator it = formFiles.begin();
 			while( it != formFiles.end()){
-				r+= it->first + " : " + it->second.path + "(" + it->second.contentType + ")\n";
+				r+= it->first + " : " + it->second.path + " (" + it->second.contentType + ")\n";
 				++it;
 			}
 			return r;
