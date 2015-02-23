@@ -290,7 +290,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 				if(httpSession) delete httpSession;
 				if(placeholderForm) delete placeholderForm;
 				resp->ok = false;
-				return;
+				return false;
 			}else{
 				ofLogError("HttpFormManager") << "??";
 			}
