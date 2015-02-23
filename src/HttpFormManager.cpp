@@ -279,6 +279,8 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			float responseTime = ofGetElapsedTimef() - t;
 			if(responseTime > timeOut){
 				ofLogError("HttpFormManager") << "most likely a timeOut! took " << responseTime << " seconds";
+				resp->status = HTTPResponse::HTTP_REQUEST_TIMEOUT;
+				resp->reasonForStatus = res.getReasonForStatus( (HTTPResponse::HTTPStatus)resp->status);
 			}
 			if(rsP == NULL){
 				//httpSession->abort();
@@ -288,6 +290,8 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 				if(placeholderForm) delete placeholderForm;
 				resp->ok = false;
 				return;
+			}else{
+				ofLogError("HttpFormManager") << "??";
 			}
 		}
 
