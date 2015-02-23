@@ -281,6 +281,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 				ofLogError("HttpFormManager") << "most likely a timeOut! took " << responseTime << " seconds";
 				resp->status = HTTPResponse::HTTP_REQUEST_TIMEOUT;
 				resp->reasonForStatus = res.getReasonForStatus( (HTTPResponse::HTTPStatus)resp->status);
+				resp->totalTime = ofGetElapsedTimef() - t;
 			}
 			if(rsP == NULL){
 				//httpSession->abort();
@@ -314,6 +315,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		resp->reasonForStatus = res.getReasonForStatus( res.getStatus() );
 		resp->timestamp = res.getDate();
 		resp->contentType = res.getContentType();
+		resp->totalTime = ofGetElapsedTimef() - t;
 
 		//delete createdobjects
 		if (form) delete form;
