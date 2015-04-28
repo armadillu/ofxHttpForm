@@ -265,7 +265,11 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		//	ofLogNotice("HttpFormManager") << "NO PROXY USED! " << resp->action;
 		//}
 
-		form->write(httpSession->sendRequest(req));
+		try{
+			form->write(httpSession->sendRequest(req));
+		}catch(Exception& exc){
+			ofLogError("HttpFormManager") << exc.displayText() ;
+		}
 		istream * rsP = NULL;
 		try{
 			istream & rs = httpSession->receiveResponse(res);
