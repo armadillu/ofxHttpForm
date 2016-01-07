@@ -5,6 +5,11 @@
 #include <map>
 
 struct FormContent{
+	enum Type {
+		CONTENT_TYPE_FILE,
+		CONTENT_TYPE_STRING
+	} type;
+	string content;
 	string path;
 	string contentType;
 };
@@ -39,14 +44,23 @@ struct HttpForm{
 		
 		void clearFormFields(){
 			formIdValues.clear();
-			formFiles.clear();
+			formBodyParts.clear();
 		}
 		
 		void addFile(string fieldName, string path, string mimeType = "text/plain"){
 			FormContent f;
+			f.type = FormContent::CONTENT_TYPE_FILE;
 			f.path = ofToDataPath(path, true);
 			f.contentType = mimeType;
-			formFiles[fieldName] = f;
+			formBodyParts[fieldName] = f;
+		}
+	
+		void addString(string fieldName, string content, string mimeType = "text/plain") {
+			FormContent f;
+			f.type = FormContent::CONTENT_TYPE_STRING;
+			f.content = content;
+			f.contentType = mimeType;
+			formBodyParts[fieldName] = f;
 		}
 
 		string getFieldValue(string ID){
@@ -74,9 +88,14 @@ struct HttpForm{
 				++it2;
 			}
 
-			std::map<string, FormContent >::iterator it = formFiles.begin();
-			while( it != formFiles.end()){
-				r+= it->first + " : " + it->second.path + " (" + it->second.contentType + ")\n";
+			std::map<string, FormContent >::iterator it = formBodyParts.begin();
+			while( it != formBodyParts.end()){
+				if (it->second.type == FormContent::CONTENT_TYPE_FILE) {
+					r+= it->first + " (file) : " + it->second.path + " (" + it->second.contentType + ")\n";
+				}
+				else {
+					r+= it->first + " (string) : " + it->second.content + "\n";
+				}
 				++it;
 			}
 			return r;
@@ -85,6 +104,6 @@ struct HttpForm{
 		string url;
 		int port;
 		std::map<string, string> formIdValues;
-		std::map<string, FormContent > formFiles;
+		std::map<string, FormContent > formBodyParts;
 };
 

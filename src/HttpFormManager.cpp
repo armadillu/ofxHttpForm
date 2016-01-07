@@ -24,6 +24,7 @@
 #include "Poco/Exception.h"
 #include "Poco/Mutex.h"
 #include "Poco/Net/FilePartSource.h"
+#include "Poco/Net/StringPartSource.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -116,7 +117,7 @@ HttpFormResponse* HttpFormManager::createFormRespPtrFromForm( HttpForm f ){
 	form->url = f.url;
 	form->port = f.port;
 	form->formIdValues = f.formIdValues;
-	form->formFiles = f.formFiles;
+	form->formBodyParts = f.formBodyParts;
 	return form;
 }
 
@@ -143,7 +144,7 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 	HttpFormResponse form;
 	form.url = f.url;
 	form.formIdValues = f.formIdValues;
-	form.formFiles = f.formFiles;
+	form.formBodyParts = f.formBodyParts;
 	//form.submissionCanceled = false;
 	form.ignoreReply = false;
 
@@ -176,7 +177,7 @@ HTMLForm* HttpFormManager::createPocoFormFrom( HttpFormResponse * resp ){
 	
 	HTMLForm *form = new HTMLForm();
 	
-	if( resp->formFiles.size() > 0 )
+	if( resp->formBodyParts.size() > 0 )
 		form->setEncoding(HTMLForm::ENCODING_MULTIPART);
 	else
 		form->setEncoding(HTMLForm::ENCODING_URL);
@@ -193,11 +194,16 @@ HTMLForm* HttpFormManager::createPocoFormFrom( HttpFormResponse * resp ){
 	}
 
 	map<string,FormContent>::iterator it;
-	for( it = resp->formFiles.begin(); it != resp->formFiles.end(); it++ ){	
+	for( it = resp->formBodyParts.begin(); it != resp->formBodyParts.end(); it++ ){
 		try{
-			string path = it->second.path;
-			FilePartSource * file = new FilePartSource(  path, it->second.contentType );
-			form->addPart( it->first, file );
+			if (it->second.type == FormContent::CONTENT_TYPE_FILE) {
+				FilePartSource * filePart = new FilePartSource(it->second.path, it->second.contentType);
+				form->addPart( it->first, filePart );
+			}
+			else if (it->second.type == FormContent::CONTENT_TYPE_STRING) {
+				StringPartSource* stringPart = new StringPartSource(it->second.content, it->second.contentType);
+				form->addPart( it->first, stringPart );
+			}
 		}catch(...){
 			ofLogError("HttpFormManager") << "createPocoFormFrom() form file not found! " << it->second.path;
 			delete form;
@@ -444,9 +450,14 @@ string HttpFormResponse::toString(){
 			++it;
 		}
 	}
-	std::map<string, FormContent>::iterator it = formFiles.begin();
-	while(it != formFiles.end()){
-		ss << "    FileID: '" << it->first << "'  Path: '" << it->second.path << "'  CntType:  '" << it->second.contentType << "'" << endl;
+	std::map<string, FormContent>::iterator it = formBodyParts.begin();
+	while(it != formBodyParts.end()){
+		if (it->second.type == FormContent::CONTENT_TYPE_FILE) {
+			ss << "    FileID: '" << it->first << "'  Path: '" << it->second.path << "'  CntType:  '" << it->second.contentType << "'" << endl;
+		}
+		else if (it->second.type == FormContent::CONTENT_TYPE_STRING) {
+			ss << "    FileID: '" << it->first << "'  Content: '" << it->second.content << "'  CntType:  '" << it->second.contentType << "'" << endl;
+		}
 		++it;
 	}
 	ss << "    status: " << status << " (" << reasonForStatus << ")" << endl;

@@ -39,7 +39,7 @@ struct HttpFormResponse{
 	int							port;
 	string						action;	
 	std::map<string,string>		formIdValues;
-	std::map<string, FormContent> formFiles;
+	std::map<string, FormContent> formBodyParts;
 
 	//more detailed response info & session
 	bool						ignoreReply;
