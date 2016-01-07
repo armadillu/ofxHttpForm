@@ -93,7 +93,11 @@ void HttpFormManager::setCredentials(string newUsername, string newPassword){
 void HttpFormManager::draw(int x, int y){
 	
 	char aux[2048];
+#if (__cplusplus >= 201103L)
+	std::unique_lock<std::mutex> lck(mutex);
+#else
 	ofMutex::ScopedLock Lock( mutex );
+#endif
 		int n = q.size();
 		if ( isThreadRunning() && n > 0 ){
 			HttpFormResponse * r = q.front();
@@ -157,7 +161,11 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 }
 
 int HttpFormManager::getQueueLength(){
+#if (__cplusplus >= 201103L)
+	std::unique_lock<std::mutex> lck(mutex);
+#else
 	ofMutex::ScopedLock Lock( mutex );
+#endif
 	int queueLen = 0;
 	queueLen = q.size();
 	return queueLen;
