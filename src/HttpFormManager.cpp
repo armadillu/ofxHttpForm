@@ -26,8 +26,8 @@
 #include "Poco/Net/FilePartSource.h"
 #include "Poco/Net/StringPartSource.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
+//#include <sys/types.h>
+//#include <sys/stat.h>
 //#include <unistd.h>
 
 HttpFormManager::HttpFormManager(){
@@ -94,7 +94,7 @@ void HttpFormManager::setCredentials(string newUsername, string newPassword){
 void HttpFormManager::draw(int x, int y){
 	
 	char aux[2048];
-#if (__cplusplus >= 201103L)
+#if (__cplusplus >= 199711L)
 	std::unique_lock<std::mutex> lck(mutex);
 #else
 	ofMutex::ScopedLock Lock( mutex );
@@ -162,7 +162,7 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 }
 
 int HttpFormManager::getQueueLength(){
-#if (__cplusplus >= 201103L)
+#if (__cplusplus >= 199711L)
 	std::unique_lock<std::mutex> lck(mutex);
 #else
 	ofMutex::ScopedLock Lock( mutex );
@@ -315,7 +315,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		}
 
 		try{
-			StreamCopier::copyToString(*rsP, resp->responseBody);	//copy the response data...
+			Poco::StreamCopier::copyToString(*rsP, resp->responseBody);	//copy the response data...
 		}catch(Exception& exc){
 			ofLogError("HttpFormManager") << "cant copy stream!";
 		}
@@ -361,7 +361,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		
 		try{
 
-			StreamCopier::copyToString(*rsP, resp->responseBody);	//copy the response data...
+			Poco::StreamCopier::copyToString(*rsP, resp->responseBody);	//copy the response data...
 
 		}catch(Exception& exc){
 			ofLogError("HttpFormManager") << "executeForm(" << resp->action <<  ") >> Exception while copyToString: " << exc.displayText();

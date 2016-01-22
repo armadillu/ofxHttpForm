@@ -25,7 +25,7 @@
 
 #include "HttpForm.h"
 using namespace Poco::Net;
-using namespace Poco;
+//using namespace Poco;
 using Poco::Exception;
 using Poco::Net::HTTPClientSession;
 
