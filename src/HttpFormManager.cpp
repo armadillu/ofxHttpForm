@@ -134,12 +134,12 @@ void HttpFormManager::submitForm( HttpForm f, bool ignoreReply, string identifie
 	unlock();
 	
 	if ( !isThreadRunning() ){	//if the queue is not running, lets start it
-		startThread(true, false);
+		startThread();
 	}	
 }
 
 
-HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
+HttpFormResponse HttpFormManager::submitFormBlocking( const HttpForm & f ){
 	
 	HttpFormResponse form;
 	form.url = f.url;
@@ -148,10 +148,9 @@ HttpFormResponse HttpFormManager::submitFormBlocking( HttpForm  f ){
 	//form.submissionCanceled = false;
 	form.ignoreReply = false;
 
-	
 	bool ok = executeForm( &form, false);
 	if (!ok){
-		ofLogError("HttpFormManager") << "ExecuteForm() failed! ";
+		ofLogError("HttpFormManager") << "ExecuteForm() FAILED! ";
 		ofLogError("HttpFormManager") << "\n" << f.toString(100);
 		ofLogError("HttpFormManager") << "HttpStatus: " << form.status;
 		ofLogError("HttpFormManager") << "Reason: " << form.reasonForStatus;
@@ -205,11 +204,10 @@ HTMLForm* HttpFormManager::createPocoFormFrom( HttpFormResponse * resp ){
 				form->addPart( it->first, stringPart );
 			}
 		}catch(...){
-			ofLogError("HttpFormManager") << "createPocoFormFrom() form file not found! " << it->second.path;
+			ofLogError("HttpFormManager") << "createPocoFormFrom() form file not found! \"" << it->second.path << "\"";
 			delete form;
 			return NULL;
 		}
-
 	}
 	return form;
 }
@@ -217,8 +215,8 @@ HTMLForm* HttpFormManager::createPocoFormFrom( HttpFormResponse * resp ){
 
 bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroughEvents ){  
 
-	HTMLForm *form = NULL;
-	HTMLForm *placeholderForm = NULL;
+	HTMLForm * form = NULL;
+	HTMLForm * placeholderForm = NULL;
 	HTTPClientSession * httpSession = NULL;
 
 	try{
@@ -246,13 +244,18 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		//we need to specify exact lenght of the data in the form (file s headers), but we can't really measure it untill its been sent
 		//so we create 2 indetical forms, one just to measure its size, other to use for sending thorugh the request
 		form = createPocoFormFrom(resp);
-		if (form == NULL) return false;
+		if (form == NULL){
+			resp->ok = false;
+			resp->reasonForStatus = "Form File Missing!";
+			resp->status = HTTPResponse::HTTP_NOT_FOUND;
+			ofLogError("HttpFormManager") << "Form Creation Error()! Form File not found!";
+			return false;
+		}
 		placeholderForm = createPocoFormFrom(resp);
 
 		form->prepareSubmit(req);
 		placeholderForm->prepareSubmit(req);
 
-		req.setChunkedTransferEncoding(false);
 		//req.setKeepAlive(true);
 		//req.set("Accept" , "*/*" );
 		//req.set("Origin", "http://" + uri.getHost() + ":" + ofToString(uri.getPort()) );
@@ -263,6 +266,8 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		placeholderForm->write(formDumpContainer);
 		delete placeholderForm;
 		placeholderForm = NULL;
+
+		req.setChunkedTransferEncoding(false);
 		req.setContentLength( formDumpContainer.str().length() );	//finally we can specify exact content length in the request
 
 		if(uri.getScheme()=="https"){
@@ -272,6 +277,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		}
 
 		httpSession->setTimeout( Poco::Timespan(timeOut,0) );
+
 		if(enableProxy){
 			httpSession->setProxy(proxyHost, proxyPort);
 			httpSession->setProxyCredentials(proxyUsername, proxyPassword);
@@ -279,12 +285,22 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		//	ofLogNotice("HttpFormManager") << "NO PROXY USED! " << resp->action;
 		//}
 
+		istream * rsP = NULL;
+
 		try{
 			form->write(httpSession->sendRequest(req));
 		}catch(Exception& exc){
-			ofLogError("HttpFormManager") << exc.displayText() ;
+			ofLogError("HttpFormManager") << "Exception on sendRequest()! \"" << exc.displayText() << "\"";
+			resp->status = HTTPResponse::HTTPStatus(-1);
+			resp->reasonForStatus = exc.displayText();
+					resp->totalTime = ofGetElapsedTimef() - t;
+			//cleanup and return early
+			if(form) delete form;
+			if(httpSession) delete httpSession;
+			resp->ok = false;
+			return false;
 		}
-		istream * rsP = NULL;
+
 		try{
 			istream & rs = httpSession->receiveResponse(res);
 			resp->totalTime = ofGetElapsedTimef() - t;
@@ -292,32 +308,34 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			rsP = &rs;
 		}catch(Exception& exc){
 			resp->status = res.getStatus();
-			resp->reasonForStatus = res.getReasonForStatus( res.getStatus() );
-			ofLogError("HttpFormManager") << exc.displayText() ;
+			resp->reasonForStatus = res.getReasonForStatus( res.getStatus() ) + " - " + exc.what();
+			ofLogError("HttpFormManager") << "Exception on receiveResponse()! " << exc.displayText() ;
 			float responseTime = ofGetElapsedTimef() - t;
 			if(responseTime > timeOut){
-				ofLogError("HttpFormManager") << "most likely a timeOut! took " << responseTime << " seconds";
+				ofLogError("HttpFormManager") << "most likely a timeOut (" << timeOut <<  ")! took " << responseTime << " seconds";
 				resp->status = HTTPResponse::HTTP_REQUEST_TIMEOUT;
 				resp->reasonForStatus = res.getReasonForStatus( (HTTPResponse::HTTPStatus)resp->status);
 				resp->totalTime = ofGetElapsedTimef() - t;
 			}
-			if(rsP == NULL){
-				//httpSession->abort();
-				//cleanup and return early
-				if(form) delete form;
-				if(httpSession) delete httpSession;
-				if(placeholderForm) delete placeholderForm;
-				resp->ok = false;
-				return false;
-			}else{
-				ofLogError("HttpFormManager") << "??";
-			}
+
+			//cleanup and return early
+			if(form) delete form;
+			if(httpSession) delete httpSession;
+			resp->ok = false;
+			return false;
 		}
 
 		try{
 			Poco::StreamCopier::copyToString(*rsP, resp->responseBody);	//copy the response data...
 		}catch(Exception& exc){
-			ofLogError("HttpFormManager") << "cant copy stream!";
+			ofLogError("HttpFormManager") << "Exception while copyToString: " << exc.displayText();
+			resp->ok = false;
+
+			//cleanup and return early
+			if(form) delete form;
+			if(httpSession) delete httpSession;
+			resp->ok = false;
+			return false;
 		}
 
 		if (debug){	//print all what's being sent through network (http headers)
@@ -336,14 +354,10 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		resp->totalTime = ofGetElapsedTimef() - t;
 
 		//delete createdobjects
-		if (form) delete form;
-		form = NULL;
-		if (placeholderForm) delete placeholderForm;
-		placeholderForm = NULL;
-		if(httpSession)delete httpSession;
-		httpSession = NULL;
+		if (form) delete form; form = NULL;
+		if (httpSession) delete httpSession; httpSession = NULL;
 
-		//handle redirects?
+		//handle redirects? TODO
 //		if(res.getStatus() >= 300 && res.getStatus() < 400){
 //			Poco::URI uri(req.getURI());
 //			uri.resolve(res.get("Location"));
@@ -359,15 +373,6 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			return false;
 		};
 		
-		try{
-
-			Poco::StreamCopier::copyToString(*rsP, resp->responseBody);	//copy the response data...
-
-		}catch(Exception& exc){
-			ofLogError("HttpFormManager") << "executeForm(" << resp->action <<  ") >> Exception while copyToString: " << exc.displayText();
-			resp->ok = false;
-			return false;
-		}
 
 		if (debug){
 			ofLogNotice("HttpFormManager") << "executeForm() >> submitted form! ("<< resp->action << ")";
@@ -392,12 +397,13 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 		}
 
 	}catch(Exception& exc){
+
 		ofLogError("HttpFormManager") << "executeForm(" << resp->action << ") >> Exception: " << exc.displayText();
-		resp->ok = FALSE;
-		//clean up
+		//cleanup and return early
 		if(form) delete form;
 		if(httpSession) delete httpSession;
-		if(placeholderForm) delete placeholderForm;
+		resp->ok = false;
+		return false;
 	}
 	return resp->ok;
 }
@@ -453,10 +459,10 @@ string HttpFormResponse::toString(){
 	std::map<string, FormContent>::iterator it = formBodyParts.begin();
 	while(it != formBodyParts.end()){
 		if (it->second.type == FormContent::CONTENT_TYPE_FILE) {
-			ss << "    FileID: '" << it->first << "'  Path: '" << it->second.path << "'  CntType:  '" << it->second.contentType << "'" << endl;
+			ss << "    FileID: '" << it->first << "'  Path: '" << it->second.path << "'  ContentType: '" << it->second.contentType << "'" << endl;
 		}
 		else if (it->second.type == FormContent::CONTENT_TYPE_STRING) {
-			ss << "    FileID: '" << it->first << "'  Content: '" << it->second.content << "'  CntType:  '" << it->second.contentType << "'" << endl;
+			ss << "    StringID: '" << it->first << "'  Content: '" << it->second.content << "'  ContentType: '" << it->second.contentType << "'" << endl;
 		}
 		++it;
 	}

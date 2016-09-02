@@ -71,12 +71,12 @@ struct HttpForm{
 			return "";
 		}
 
-		string toString(int cropValueLenTo = -1){
+		string toString(int cropValueLenTo = -1) const{
 			string r = "HttpForm endpoint: " + url;
 			if(port != -1) r += "  port: " + ofToString(port) + "\n";
 			else r += "\n";
 
-			std::map<string, string>::iterator it2 = formIdValues.begin();
+			auto it2 = formIdValues.begin();
 			while( it2 != formIdValues.end() ){
 				if(cropValueLenTo > 0){
 					string val = it2->second;
@@ -88,7 +88,7 @@ struct HttpForm{
 				++it2;
 			}
 
-			std::map<string, FormContent >::iterator it = formBodyParts.begin();
+			auto it = formBodyParts.begin();
 			while( it != formBodyParts.end()){
 				if (it->second.type == FormContent::CONTENT_TYPE_FILE) {
 					r+= it->first + " (file) : " + it->second.path + " (" + it->second.contentType + ")\n";
@@ -98,6 +98,7 @@ struct HttpForm{
 				}
 				++it;
 			}
+			if(r.size() && r[r.size()-1] == '\n') r = r.substr(0, r.size() - 1); //remove last \n
 			return r;
 		}
 

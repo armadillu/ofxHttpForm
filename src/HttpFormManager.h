@@ -44,7 +44,7 @@ struct HttpFormResponse{
 	//more detailed response info & session
 	bool						ignoreReply;
 	//bool						submissionCanceled;
-	int							status; 			// return code for the response ie: 200 = OK
+	HTTPResponse::HTTPStatus	status; 			// return code for the response ie: 200 = OK
 	string						reasonForStatus;	// text explaining the status
 	string						responseBody;		// the actual response
 	string						contentType;		// the mime type of the response
@@ -56,7 +56,8 @@ struct HttpFormResponse{
 	void						print();
 
 	HttpFormResponse(){
-		status = port = -1;
+		status = HTTPResponse::HTTP_NOT_FOUND;
+		port = -1;
 		totalTime = 0.0f;
 	}
 
@@ -74,7 +75,7 @@ class HttpFormManager : public ofThread{
 
 		//once your form is all set (you added all fields, etc), add it to the manager's queue to process									
 		void submitForm( HttpForm form, bool ignoreReply = true, string identifier = "");	//enque, process in background thread (if ignoreReply==true, you will not get notified thorugh OFEvents when form is sent)
-		HttpFormResponse submitFormBlocking( HttpForm form );		//blocking, stops main thread
+		HttpFormResponse submitFormBlocking( const HttpForm & form );		//blocking, stops main thread
 	
 		void draw(int x = 20, int y = 20);	//see queue progress on screen
 		int	getQueueLength();
