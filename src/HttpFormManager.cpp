@@ -467,7 +467,7 @@ string HttpFormResponse::toString(){
 		++it;
 	}
 	ss << "    status: " << status << " (" << reasonForStatus << ")" << endl;
-	ss << "    response: '" << responseBody << "'" << endl;
+	ss << "    response: \"" << responseBody << "\"" << endl;
 	return ss.str();
 }
 
