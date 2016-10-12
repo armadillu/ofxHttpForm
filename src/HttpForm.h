@@ -81,9 +81,9 @@ struct HttpForm{
 				if(cropValueLenTo > 0){
 					string val = it2->second;
 					if(val.size() > cropValueLenTo) val = val.substr(0, cropValueLenTo) + "...";
-					r+= it2->first + " : " + val + "\n";
+					r+= it2->first + " : \"" + val + "\"\n";
 				}else{
-					r+= it2->first + " : " + it2->second + "\n";
+					r+= it2->first + " : \"" + it2->second + "\"\n";
 				}
 				++it2;
 			}
