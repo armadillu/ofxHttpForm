@@ -5,7 +5,7 @@
 #include "ofMain.h"
 #include "HttpFormManager.h"
 
-class testApp : public ofBaseApp{
+class ofApp : public ofBaseApp{
 
 	public:
 		void setup();

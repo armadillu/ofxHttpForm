@@ -1,12 +1,12 @@
-#include "testApp.h"
+#include "ofApp.h"
 
 
-void testApp::newResponse(HttpFormResponse &response){
+void ofApp::newResponse(HttpFormResponse &response){
 	printf("form '%s' returned : %s\n", response.url.c_str(), response.ok ? "OK" : "KO" );
 }
 
 
-void testApp::setup(){
+void ofApp::setup(){
 
 	ofBackground(22, 0, 0);
 	ofSetVerticalSync(true);
@@ -14,20 +14,20 @@ void testApp::setup(){
 
 	//FormManager that will deal with the form, add a listener to get an answer when submitted
 	fm.setVerbose(true);	//we want to see what's going on internally
-	ofAddListener(fm.formResponseEvent, this, &testApp::newResponse);	//add listener to formManager if u want to be notified when form was sent
+	ofAddListener(fm.formResponseEvent, this, &ofApp::newResponse);	//add listener to formManager if u want to be notified when form was sent
 
 	return;
 }
 
 
-void testApp::draw(){
+void ofApp::draw(){
 	fm.draw();
 	float y = 30 + 20 * sinf( 0.1 * ofGetFrameNum() );
 	ofCircle( 12, y, 5);
 }
 
 
-void testApp::keyPressed(int key){
+void ofApp::keyPressed(int key){
 
 	//first, create and fill in a form
 	HttpForm f = HttpForm( "http://uri.cat/fabrica/fileUploadTest.php" );
@@ -38,7 +38,7 @@ void testApp::keyPressed(int key){
 
 		case '1':
 			//starts a background thread with the upload.
-			//testApp::newResponse(...) will get called when done
+			//ofApp::newResponse(...) will get called when done
 			fm.submitForm( f, false );	//false == ignoreReply
 			break;
 
