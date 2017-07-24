@@ -46,13 +46,10 @@ void ofApp::keyPressed(int key){
 			//upload on this thread, this block until done.
 			//you get a response when done.
 			HttpFormResponse r = fm.submitFormBlocking( f );
-			printf("response: %s\n", r.responseBody.c_str() );
+			ofLogNotice() << "response: " << r.responseBody;
 			break;
 		}
 		
-		case '3':
-			fm.cancelCurrentFormSubmission();		//this causes sigpipe! //TODO!
-			break;
 
 		default:
 			break;
