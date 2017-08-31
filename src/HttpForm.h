@@ -9,9 +9,9 @@ struct FormContent{
 		CONTENT_TYPE_FILE,
 		CONTENT_TYPE_STRING
 	} type;
-	string content;
-	string path;
-	string contentType;
+	std::string content;
+	std::string path;
+	std::string contentType;
 };
 
 struct HttpForm{
@@ -21,7 +21,7 @@ struct HttpForm{
 			port = -1;
 		}
 
-		HttpForm( string url_, int port_ = -1 ){
+		HttpForm( std::string url_, int port_ = -1 ){
 			url = url_;
 			port = port_;
 		}
@@ -30,7 +30,7 @@ struct HttpForm{
 			clearFormFields();
 		}
 
-		void setURL(string url_){
+		void setURL(std::string url_){
 			url = url_;			
 		}
 
@@ -38,7 +38,7 @@ struct HttpForm{
 			port = port_;			
 		}
 	
-		void addFormField(string ID, string value){
+		void addFormField(std::string ID, std::string value){
 			formIdValues[ID] = value;
 		}
 		
@@ -47,7 +47,7 @@ struct HttpForm{
 			formBodyParts.clear();
 		}
 		
-		void addFile(string fieldName, string path, string mimeType = "text/plain"){
+		void addFile(std::string fieldName, std::string path, std::string mimeType = "text/plain"){
 			FormContent f;
 			f.type = FormContent::CONTENT_TYPE_FILE;
 			f.path = ofToDataPath(path, true);
@@ -55,7 +55,7 @@ struct HttpForm{
 			formBodyParts[fieldName] = f;
 		}
 	
-		void addString(string fieldName, string content, string mimeType = "text/plain") {
+		void addString(std::string fieldName, std::string content, std::string mimeType = "text/plain") {
 			FormContent f;
 			f.type = FormContent::CONTENT_TYPE_STRING;
 			f.content = content;
@@ -63,23 +63,23 @@ struct HttpForm{
 			formBodyParts[fieldName] = f;
 		}
 
-		string getFieldValue(string ID){
-			std::map<string, string>::iterator it = formIdValues.find(ID);
+		std::string getFieldValue(std::string ID){
+			std::map<std::string, std::string>::iterator it = formIdValues.find(ID);
 			if(it != formIdValues.end()){
 				return it->second;
 			}
 			return "";
 		}
 
-		string toString(int cropValueLenTo = -1) const{
-			string r = "HttpForm endpoint: " + url;
+		std::string toString(int cropValueLenTo = -1) const{
+			std::string r = "HttpForm endpoint: " + url;
 			if(port != -1) r += "  port: " + ofToString(port) + "\n";
 			else r += "\n";
 
 			auto it2 = formIdValues.begin();
 			while( it2 != formIdValues.end() ){
 				if(cropValueLenTo > 0){
-					string val = it2->second;
+					std::string val = it2->second;
 					if(val.size() > cropValueLenTo) val = val.substr(0, cropValueLenTo) + "...";
 					r+= it2->first + " : \"" + val + "\"\n";
 				}else{
@@ -102,9 +102,9 @@ struct HttpForm{
 			return r;
 		}
 
-		string url;
+		std::string url;
 		int port;
-		std::map<string, string> formIdValues;
-		std::map<string, FormContent > formBodyParts;
+		std::map<std::string, std::string> formIdValues;
+		std::map<std::string, FormContent > formBodyParts;
 };
 

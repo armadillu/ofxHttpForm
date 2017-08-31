@@ -28,6 +28,8 @@ using namespace Poco::Net;
 //using namespace Poco;
 using Poco::Exception;
 using Poco::Net::HTTPClientSession;
+using namespace std;
+
 
 struct HttpFormResponse{
 	
@@ -35,24 +37,24 @@ struct HttpFormResponse{
 	bool						ok;
 	
 	//submitted form contents
-	string						url;
+	std::string						url;
 	int							port;
-	string						action;	
-	std::map<string,string>		formIdValues;
-	std::map<string, FormContent> formBodyParts;
+	std::string						action;
+	std::map<std::string,std::string>		formIdValues;
+	std::map<std::string, FormContent> formBodyParts;
 
 	//more detailed response info & session
 	bool						ignoreReply;
 	//bool						submissionCanceled;
 	HTTPResponse::HTTPStatus	status; 			// return code for the response ie: 200 = OK
-	string						reasonForStatus;	// text explaining the status
-	string						responseBody;		// the actual response
-	string						contentType;		// the mime type of the response
+	std::string						reasonForStatus;	// text explaining the status
+	std::string						responseBody;		// the actual response
+	std::string						contentType;		// the mime type of the response
 	Poco::Timestamp				timestamp;			// time of the response
 	float						totalTime;			//time it took to get a response
 
-    string                      identifier;
-	string						toString();
+    std::string                      identifier;
+	std::string						toString();
 	void						print();
 
 	HttpFormResponse(){
@@ -74,7 +76,7 @@ class HttpFormManager : public ofThread{
 	//  actions  //////////////////////////////////////////////////////////////
 
 		//once your form is all set (you added all fields, etc), add it to the manager's queue to process									
-		void submitForm( HttpForm form, bool ignoreReply = true, string identifier = "");	//enque, process in background thread (if ignoreReply==true, you will not get notified thorugh OFEvents when form is sent)
+		void submitForm( HttpForm form, bool ignoreReply = true, std::string identifier = "");	//enque, process in background thread (if ignoreReply==true, you will not get notified thorugh OFEvents when form is sent)
 		HttpFormResponse submitFormBlocking( const HttpForm & form );		//blocking, stops main thread
 	
 		void draw(int x = 20, int y = 20);	//see queue progress on screen
@@ -84,12 +86,12 @@ class HttpFormManager : public ofThread{
 
 		void setTimeOut( int seconds );
 		void setVerbose(bool verbose);
-		void setUserAgent( string newUserAgent );
-		void setAcceptString( string newAcceptString );
+		void setUserAgent( std::string newUserAgent );
+		void setAcceptString( std::string newAcceptString );
 
-		void setProxy(bool enableProxy, string host, int port, string username, string password);
+		void setProxy(bool enableProxy, std::string host, int port, std::string username, std::string password);
     
-		void setCredentials(string username, string password);
+		void setCredentials(std::string username, std::string password);
 		
 		ofEvent<HttpFormResponse> formResponseEvent;
 
@@ -105,21 +107,21 @@ class HttpFormManager : public ofThread{
 		
 		bool							debug;	//should we print lots of stuff?
 		int								timeOut;
-		string							userAgent;
-		string							acceptString;
-		queue<HttpFormResponse*>		q;		//the pending forms
+		std::string							userAgent;
+		std::string							acceptString;
+		std::queue<HttpFormResponse*>		q;		//the pending forms
 		bool							timeToStop;
 
 		//proxy config
 		bool 							enableProxy;
-		string							proxyHost;
+		std::string							proxyHost;
 		int								proxyPort;
-		string							proxyUsername;
-		string							proxyPassword;
+		std::string							proxyUsername;
+		std::string							proxyPassword;
     
 		//credentials
-		string							username;
-		string							password;
+		std::string							username;
+		std::string							password;
 		bool							usingCredentials;
 	
 };

@@ -68,16 +68,16 @@ void HttpFormManager::setVerbose(bool verbose){
 }
 
 
-void HttpFormManager::setUserAgent( string newUserAgent ){
+void HttpFormManager::setUserAgent( std::string newUserAgent ){
 	userAgent = newUserAgent;
 }
 
 
-void HttpFormManager::setAcceptString( string newAcceptString ){
+void HttpFormManager::setAcceptString( std::string newAcceptString ){
 	acceptString = newAcceptString;
 }
 
-void HttpFormManager::setProxy(bool enabled, string host, int port, string username, string password){
+void HttpFormManager::setProxy(bool enabled, std::string host, int port, std::string username, std::string password){
 	enableProxy = enabled;
 	proxyHost = host;
 	proxyPort = port;
@@ -85,7 +85,7 @@ void HttpFormManager::setProxy(bool enabled, string host, int port, string usern
 	proxyPassword = password;
 }
 
-void HttpFormManager::setCredentials(string newUsername, string newPassword){
+void HttpFormManager::setCredentials(std::string newUsername, std::string newPassword){
 	username = newUsername;
 	password = newPassword;
 	usingCredentials = true;
@@ -122,7 +122,7 @@ HttpFormResponse* HttpFormManager::createFormRespPtrFromForm( HttpForm f ){
 }
 
 
-void HttpFormManager::submitForm( HttpForm f, bool ignoreReply, string identifier ){
+void HttpFormManager::submitForm( HttpForm f, bool ignoreReply, std::string identifier ){
 
  	HttpFormResponse *form = createFormRespPtrFromForm( f );
 	//form->submissionCanceled = false;
@@ -183,7 +183,7 @@ HTMLForm* HttpFormManager::createPocoFormFrom( HttpFormResponse * resp ){
 					
 	// form values
 	{
-		map<string,string>::iterator it = resp->formIdValues.begin();
+		std::map<std::string,std::string>::iterator it = resp->formIdValues.begin();
 		while(it != resp->formIdValues.end()){
 			const std::string name = it->first.c_str();
 			const std::string val = it->second.c_str();
@@ -192,7 +192,7 @@ HTMLForm* HttpFormManager::createPocoFormFrom( HttpFormResponse * resp ){
 		}
 	}
 
-	map<string,FormContent>::iterator it;
+	std::map<std::string,FormContent>::iterator it;
 	for( it = resp->formBodyParts.begin(); it != resp->formBodyParts.end(); it++ ){
 		try{
 			if (it->second.type == FormContent::CONTENT_TYPE_FILE) {
@@ -444,19 +444,19 @@ void HttpFormResponse::print(){
 }
 
 
-string HttpFormResponse::toString(){
-	stringstream ss;
+std::string HttpFormResponse::toString(){
+	std::stringstream ss;
 
 	ss << "HttpFormManager: " << identifier << " : " << url << endl;
 	ss << "    action: " << url << endl;
 	{
-		map<string,string>::iterator it = formIdValues.begin();
+		std::map<std::string,std::string>::iterator it = formIdValues.begin();
 		while( it != formIdValues.end()){
 			ss << "    ID: '" << it->first << "'  Value: '" << it->second << "'" << endl;
 			++it;
 		}
 	}
-	std::map<string, FormContent>::iterator it = formBodyParts.begin();
+	std::map<std::string, FormContent>::iterator it = formBodyParts.begin();
 	while(it != formBodyParts.end()){
 		if (it->second.type == FormContent::CONTENT_TYPE_FILE) {
 			ss << "    FileID: '" << it->first << "'  Path: '" << it->second.path << "'  ContentType: '" << it->second.contentType << "'" << endl;
