@@ -145,6 +145,7 @@ HttpFormResponse HttpFormManager::submitFormBlocking( const HttpForm & f ){
 	form.url = f.url;
 	form.formIdValues = f.formIdValues;
 	form.formBodyParts = f.formBodyParts;
+	form.port = f.port;
 	//form.submissionCanceled = false;
 	form.ignoreReply = false;
 
