@@ -294,7 +294,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			ofLogError("HttpFormManager") << "Exception on sendRequest()! \"" << exc.displayText() << "\"";
 			resp->status = HTTPResponse::HTTPStatus(-1);
 			resp->reasonForStatus = exc.displayText();
-					resp->totalTime = ofGetElapsedTimef() - t;
+			resp->totalTime = ofGetElapsedTimef() - t;
 			//cleanup and return early
 			if(form) delete form;
 			if(httpSession) delete httpSession;
