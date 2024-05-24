@@ -290,7 +290,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 
 		try{
 			form->write(httpSession->sendRequest(req));
-		}catch(Exception& exc){
+		}catch(Poco::Exception& exc){
 			ofLogError("HttpFormManager") << "Exception on sendRequest()! \"" << exc.displayText() << "\"";
 			resp->status = HTTPResponse::HTTPStatus(-1);
 			resp->reasonForStatus = exc.displayText();
@@ -307,7 +307,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 			resp->totalTime = ofGetElapsedTimef() - t;
 			//ofLogNotice("HttpFormManager") << "Response Took: " << resp->totalTime << " seconds";
 			rsP = &rs;
-		}catch(Exception& exc){
+		}catch(Poco::Exception& exc){
 			resp->status = res.getStatus();
 			resp->reasonForStatus = res.getReasonForStatus( res.getStatus() ) + " - " + exc.what();
 			ofLogError("HttpFormManager") << "Exception on receiveResponse()! " << exc.displayText() ;
@@ -328,7 +328,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 
 		try{
 			Poco::StreamCopier::copyToString(*rsP, resp->responseBody);	//copy the response data...
-		}catch(Exception& exc){
+		}catch(Poco::Exception& exc){
 			ofLogError("HttpFormManager") << "Exception while copyToString: " << exc.displayText();
 			resp->ok = false;
 
@@ -397,7 +397,7 @@ bool HttpFormManager::executeForm( HttpFormResponse* resp, bool sendResultThroug
 					ofNotifyEvent( formResponseEvent, *resp, this );	
 		}
 
-	}catch(Exception& exc){
+	}catch(Poco::Exception& exc){
 
 		ofLogError("HttpFormManager") << "executeForm(" << resp->action << ") >> Exception: " << exc.displayText();
 		//cleanup and return early
