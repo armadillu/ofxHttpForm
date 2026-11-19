@@ -25,6 +25,7 @@
 #include "Poco/Mutex.h"
 #include "Poco/Net/FilePartSource.h"
 #include "Poco/Net/StringPartSource.h"
+#include <utility>
 
 //#include <sys/types.h>
 //#include <sys/stat.h>
@@ -69,25 +70,25 @@ void HttpFormManager::setVerbose(bool verbose){
 
 
 void HttpFormManager::setUserAgent( std::string newUserAgent ){
-	userAgent = newUserAgent;
+	userAgent = std::move(newUserAgent);
 }
 
 
 void HttpFormManager::setAcceptString( std::string newAcceptString ){
-	acceptString = newAcceptString;
+	acceptString = std::move(newAcceptString);
 }
 
 void HttpFormManager::setProxy(bool enabled, std::string host, int port, std::string username, std::string password){
 	enableProxy = enabled;
-	proxyHost = host;
+	proxyHost = std::move(host);
 	proxyPort = port;
-	proxyUsername = username;
-	proxyPassword = password;
+	proxyUsername = std::move(username);
+	proxyPassword = std::move(password);
 }
 
 void HttpFormManager::setCredentials(std::string newUsername, std::string newPassword){
-	username = newUsername;
-	password = newPassword;
+	username = std::move(newUsername);
+	password = std::move(newPassword);
 	usingCredentials = true;
 }
 
@@ -111,7 +112,7 @@ void HttpFormManager::draw(int x, int y){
 }
 
 
-HttpFormResponse* HttpFormManager::createFormRespPtrFromForm( HttpForm f ){
+HttpFormResponse* HttpFormManager::createFormRespPtrFromForm( const HttpForm& f ){
 
  	HttpFormResponse *form = new HttpFormResponse();
 	form->url = f.url;
@@ -122,7 +123,7 @@ HttpFormResponse* HttpFormManager::createFormRespPtrFromForm( HttpForm f ){
 }
 
 
-void HttpFormManager::submitForm( HttpForm f, bool ignoreReply, std::string identifier ){
+void HttpFormManager::submitForm( const HttpForm& f, bool ignoreReply, const std::string& identifier ){
 
  	HttpFormResponse *form = createFormRespPtrFromForm( f );
 	//form->submissionCanceled = false;

@@ -76,7 +76,7 @@ class HttpFormManager : public ofThread{
 	//  actions  //////////////////////////////////////////////////////////////
 
 		//once your form is all set (you added all fields, etc), add it to the manager's queue to process									
-		void submitForm( HttpForm form, bool ignoreReply = true, std::string identifier = "");	//enque, process in background thread (if ignoreReply==true, you will not get notified thorugh OFEvents when form is sent)
+		void submitForm( const HttpForm& form, bool ignoreReply = true, const std::string& identifier = "");	//enque, process in background thread (if ignoreReply==true, you will not get notified thorugh OFEvents when form is sent)
 		HttpFormResponse submitFormBlocking( const HttpForm & form );		//blocking, stops main thread
 	
 		void draw(int x = 20, int y = 20);	//see queue progress on screen
@@ -100,7 +100,7 @@ class HttpFormManager : public ofThread{
 		void threadedFunction();	//the queue runs here
 		HTMLForm* createPocoFormFrom( HttpFormResponse * r );
 
-		HttpFormResponse* createFormRespPtrFromForm( HttpForm f );
+		HttpFormResponse* createFormRespPtrFromForm( const HttpForm& f );
 	
 		bool executeForm( HttpFormResponse* form, bool sendResultThroughEvents );
 	
